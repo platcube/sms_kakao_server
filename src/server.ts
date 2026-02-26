@@ -11,7 +11,7 @@ const app = createApp();
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const port = Number(process.env.PORT) || 4000;
+const port = Number(process.env.PORT) || 5100;
 
 app.listen(port, () => {
   console.log(`Server ready at http://localhost:${port}`);

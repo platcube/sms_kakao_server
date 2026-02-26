@@ -9,7 +9,84 @@
 * 🟢 You can import this file directly.
 */
 
+export const ClientStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE'
+} as const
+
+export type ClientStatus = (typeof ClientStatus)[keyof typeof ClientStatus]
 
 
-// This file is empty because there are no enums in the schema.
-export {}
+export const MessageType = {
+  SMS: 'SMS',
+  LMS: 'LMS',
+  MMS: 'MMS',
+  ALIMTALK: 'ALIMTALK'
+} as const
+
+export type MessageType = (typeof MessageType)[keyof typeof MessageType]
+
+
+export const SendType = {
+  NOW: 'NOW',
+  SCHEDULED: 'SCHEDULED'
+} as const
+
+export type SendType = (typeof SendType)[keyof typeof SendType]
+
+
+export const MessageStatus = {
+  PENDING: 'PENDING',
+  SCHEDULED: 'SCHEDULED',
+  DISPATCHING: 'DISPATCHING',
+  ACCEPTED: 'ACCEPTED',
+  DELIVERED: 'DELIVERED',
+  FAILED: 'FAILED',
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  CANCELED: 'CANCELED'
+} as const
+
+export type MessageStatus = (typeof MessageStatus)[keyof typeof MessageStatus]
+
+
+export const MessageEventType = {
+  REQUESTED: 'REQUESTED',
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  SCHEDULED: 'SCHEDULED',
+  DISPATCH_ATTEMPTED: 'DISPATCH_ATTEMPTED',
+  ACCEPTED: 'ACCEPTED',
+  DELIVERED: 'DELIVERED',
+  FAILED: 'FAILED',
+  RETRIED: 'RETRIED',
+  CANCELED: 'CANCELED'
+} as const
+
+export type MessageEventType = (typeof MessageEventType)[keyof typeof MessageEventType]
+
+
+export const ResultPeriodType = {
+  DAY: 'DAY',
+  MONTH: 'MONTH'
+} as const
+
+export type ResultPeriodType = (typeof ResultPeriodType)[keyof typeof ResultPeriodType]
+
+
+export const BillingStatus = {
+  PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
+  ADJUSTED: 'ADJUSTED'
+} as const
+
+export type BillingStatus = (typeof BillingStatus)[keyof typeof BillingStatus]
+
+
+export const HttpMethod = {
+  GET: 'GET',
+  POST: 'POST',
+  PUT: 'PUT',
+  PATCH: 'PATCH',
+  DELETE: 'DELETE'
+} as const
+
+export type HttpMethod = (typeof HttpMethod)[keyof typeof HttpMethod]

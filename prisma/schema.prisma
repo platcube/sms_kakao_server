@@ -7,7 +7,224 @@ datasource db {
   provider = "mysql"
 }
 
+// 헬스체크 호출 이력 테이블
 model HealthLog {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
+  id        Int      @id @default(autoincrement()) // 자동 증가 기본키
+  createdAt DateTime @default(now()) // 레코드 생성 시각
+}
+
+// 외주사(테넌트/클라이언트) 정보 테이블
+model Client {
+  id         Int          @id @default(autoincrement()) // 내부 클라이언트 식별자
+  createdAt  DateTime     @default(now()) // 레코드 생성 시각
+  updatedAt  DateTime     @updatedAt // 레코드 수정 시각
+  clientCode String       @unique @db.VarChar(50) // 클라이언트 유니크 코드
+  name       String       @db.VarChar(120) // 클라이언트 이름
+  status     ClientStatus @default(ACTIVE) // 클라이언트 이용 상태
+  apiKeyHash String       @db.VarChar(255) // API 키 해시값 - sha256으로 단방향
+  // rateLimitPerSecond Int          @default(20) // 초당 요청 제한값 - 요청 제한 횟수가 있는지?
+  // dailyLimit         Int          @default(50000) // 일일 발송 제한값 - 요청 제한 횟수가 있는지?
+
+  messages       Message[] // 클라이언트의 발송 메시지 목록
+  billingEvents  BillingEvent[] // 클라이언트 정산 이벤트 목록
+  apiRequestLogs ApiRequestLog[] // 클라이언트 API 호출 로그 목록
+
+  @@index([status]) // 상태 기준 조회 인덱스
+}
+
+// 메시지 발송 요청 및 현재 상태 테이블
+model Message {
+  id                    Int           @id @default(autoincrement())
+  idempotencyKey        String?       @unique @db.VarChar(120) // 중복 발송 방지 키
+  messageType           MessageType // 메시지 유형(SMS/LMS/MMS/ALIMTALK)
+  sendType              SendType // 즉시/예약 발송 구분
+  status                MessageStatus @default(PENDING) // 현재 처리 상태
+  recipientPhone        String        @db.VarChar(30) // 수신자 전화번호
+  senderKey             String        @db.VarChar(80) // 발신 번호 또는 발신프로필 키
+  subject               String?       @db.VarChar(120) // 제목(LMS/MMS용)
+  content               String        @db.Text // 메시지 본문
+  templateCode          String?       @db.VarChar(80) // 알림톡 템플릿 코드
+  templateVariablesJson Json? // 템플릿 치환 변수(JSON)
+  buttonsJson           Json? // 알림톡 버튼 정보(JSON)
+  mediaUrl              String?       @db.VarChar(1024) // MMS 이미지 URL
+  scheduledAt           DateTime? // 예약 발송 시각
+  requestedAt           DateTime      @default(now()) // 발송 요청 시각
+  finalizedAt           DateTime? // 최종 상태 확정 시각
+  statusReasonCode      String?       @db.VarChar(80) // 상태 사유 코드
+  statusReasonMessage   String?       @db.VarChar(255) // 상태 사유 메시지
+  createdAt             DateTime      @default(now()) // 레코드 생성 시각
+  updatedAt             DateTime      @updatedAt // 레코드 수정 시각
+
+  client             Client             @relation(fields: [clientId], references: [id], onDelete: Restrict) // 클라이언트 참조
+  clientId           Int // 소유 클라이언트 ID
+  providerDispatches ProviderDispatch[] // prcompany로 호출 및 재시도 기록
+  events             MessageEvent[] // 메시지 이벤트 이력
+  billingEvents      BillingEvent[] // 메시지 정산 이벤트
+
+  @@index([clientId, requestedAt]) // 클라이언트별 최근 요청 조회
+  @@index([status, scheduledAt]) // 상태/예약시각 기준 워커 조회
+  @@index([messageType, requestedAt]) // 유형별 통계 조회
+}
+
+// prcompany로 호출 및 재시도 기록
+model ProviderDispatch {
+  id                  Int       @id @default(autoincrement()) // 내부 식별자
+  createdAt           DateTime  @default(now()) // 레코드 생성 시각
+  providerRequestId   String?   @db.VarChar(120) // 공급자 요청 ID(존재 시)
+  requestPayloadJson  Json? // 공급자 요청 원문(JSON)
+  responsePayloadJson Json? // 공급자 응답 원문(JSON)
+  responseCount       Int? // 실제 전송 건수(Count)
+  responseCode        Int? // 응답코드(ResCd, 0 성공)
+  responseMessage     String?   @db.VarChar(255) // 응답메시지(ResMsg)
+  responseMac         String?   @db.VarChar(255) // 응답 MAC 값(Mac)
+  isRetryable         Boolean   @default(false) // 재시도 가능 여부
+  attemptNo           Int       @default(1) // 발송 시도 번호(1부터 시작)
+  maxRetry            Int       @default(0) // 최대 재시도 횟수
+  nextRetryAt         DateTime? // 다음 재시도 시각
+  dispatchedAt        DateTime? // 공급자 API 호출 시작 시각
+  respondedAt         DateTime? // 공급자 API 응답 수신 시각
+
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade) // 메시지 참조
+  messageId Int // 부모 메시지 ID
+
+  @@index([messageId, createdAt]) // 메시지별 발송 시도 조회
+  @@index([responseCode, createdAt]) // 응답코드 기준 조회
+}
+
+// 메시지 상태 변경 이력(append-only) 테이블
+model MessageEvent {
+  id         Int              @id @default(autoincrement())
+  eventAt    DateTime         @default(now()) // 이벤트 발생 시각
+  eventType  MessageEventType // 이벤트 유형
+  detailJson Json? // 이벤트 상세(JSON)
+
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade) // 메시지 참조
+  messageId Int // 부모 메시지 ID
+
+  @@index([messageId, eventAt]) // 메시지 타임라인 조회
+  @@index([eventType, eventAt]) // 이벤트 유형별 집계 조회
+}
+
+// 공급자 결과조회 스냅샷(일/월 건수 집계) 테이블
+model DeliveryResultSnapshot {
+  id           Int              @id @default(autoincrement()) // 내부 식별자
+  periodType   ResultPeriodType // 조회 단위(DAY/MONTH)
+  periodStart  DateTime // 집계 시작 시각
+  periodEnd    DateTime? // 집계 종료 시각
+  totalCount   Int? // 전체 전송 건수
+  successCount Int? // 성공 건수
+  failedCount  Int? // 실패 건수
+  responseCode Int? // 결과조회 API 응답코드
+  responseMsg  String?          @db.VarChar(255) // 결과조회 API 응답메시지
+  rawJson      Json? // 공급자 원본 결과(JSON)
+  syncedAt     DateTime         @default(now()) // 동기화 시각
+
+  @@unique([periodType, periodStart]) // 동일 기간 스냅샷 중복 방지
+  @@index([periodType, periodStart]) // 기간 단위 조회
+  @@index([syncedAt]) // 동기화 시각 기준 조회
+}
+
+// 클라이언트별 월 정산용 과금 이벤트 테이블
+model BillingEvent {
+  id            Int           @id @default(autoincrement())
+  billable      Boolean       @default(true) // 과금 대상 여부
+  unitPrice     Decimal       @db.Decimal(12, 4) // 판매 단가
+  costPrice     Decimal       @db.Decimal(12, 4) // 원가 단가
+  marginAmount  Decimal       @db.Decimal(12, 4) // 마진 금액
+  billingMonth  String        @db.VarChar(7) // 정산 월(YYYY-MM)
+  billingStatus BillingStatus @default(PENDING) // 정산 상태
+  createdAt     DateTime      @default(now()) // 레코드 생성 시각
+
+  client    Client  @relation(fields: [clientId], references: [id], onDelete: Restrict) // 클라이언트 참조
+  clientId  Int // 클라이언트 ID
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Restrict) // 메시지 참조
+  messageId Int // 메시지 ID
+
+  @@index([clientId, billingMonth]) // 클라이언트 월 정산 조회
+  @@index([messageId]) // 메시지 기준 조회
+  @@index([billingStatus, billingMonth]) // 상태별 월 정산 조회
+}
+
+// API 접근 로그 및 클라이언트 IP 기록 테이블
+model ApiRequestLog {
+  id         Int        @id @default(autoincrement())
+  path       String     @db.VarChar(255) // 요청 경로
+  method     HttpMethod // HTTP 메서드
+  clientIp   String     @db.VarChar(64) // 호출자 IP
+  httpStatus Int // 응답 HTTP 상태코드
+  traceId    String?    @db.VarChar(120) // 추적 ID
+  createdAt  DateTime   @default(now()) // 레코드 생성 시각
+
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull) // 클라이언트 참조(선택)
+  clientId Int? // 클라이언트 ID(비인증 요청은 null)
+
+  @@index([clientId, createdAt]) // 클라이언트별 최근 호출 조회
+  @@index([path, createdAt]) // 경로별 트래픽 조회
+}
+
+// 클라이언트 상태 코드
+enum ClientStatus {
+  ACTIVE // 사용 가능 상태
+  INACTIVE // 사용 중지 상태
+}
+
+// 지원 메시지 유형
+enum MessageType {
+  SMS // 단문 문자
+  LMS // 장문 문자
+  MMS // 이미지 포함 멀티미디어 문자
+  ALIMTALK // 카카오 알림톡
+}
+
+// 발송 시점 유형
+enum SendType {
+  NOW // 즉시 발송
+  SCHEDULED // 예약 발송
+}
+
+// 메시지 처리 상태
+enum MessageStatus {
+  PENDING // 접수됨(발송 대기)
+  SCHEDULED // 예약 등록됨
+  DISPATCHING // 공급자 발송 시도 중
+  ACCEPTED // 공급자가 접수 성공
+  DELIVERED // 최종 전달 성공(결과조회 기준)
+  FAILED // 최종 실패
+  VALIDATION_FAILED // 요청 검증 실패
+  CANCELED // 취소됨
+}
+
+// 메시지 이벤트 유형
+enum MessageEventType {
+  REQUESTED // 발송 요청 생성됨
+  VALIDATION_FAILED // 요청 검증 실패
+  SCHEDULED // 예약 발송으로 등록됨
+  DISPATCH_ATTEMPTED // 공급자 발송 시도 수행
+  ACCEPTED // 공급자 접수 성공
+  DELIVERED // 최종 전달 성공 확인
+  FAILED // 최종 실패 확정
+  RETRIED // 재시도 스케줄/수행됨
+  CANCELED // 발송 취소됨
+}
+
+// 결과조회 집계 단위
+enum ResultPeriodType {
+  DAY // 일 단위 조회
+  MONTH // 월 단위 조회
+}
+
+// 정산 상태
+enum BillingStatus {
+  PENDING // 정산 대기
+  CONFIRMED // 정산 확정
+  ADJUSTED // 정산 조정됨
+}
+
+// HTTP 메서드
+enum HttpMethod {
+  GET // 조회 요청
+  POST // 생성/처리 요청
+  PUT // 전체 수정 요청
+  PATCH // 부분 수정 요청
+  DELETE // 삭제 요청
 }
