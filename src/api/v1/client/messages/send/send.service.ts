@@ -41,28 +41,16 @@ const toResponseDto = (args: {
   messageId: number;
   status: string;
   requestedAt: Date;
-  provider: {
-    responseCode: number | null;
-    responseMessage: string | null;
-    responseCount: number | null;
-  } | null;
-  retry: {
-    isRetryable: boolean;
-    nextRetryAt: Date | null;
-    attemptNo: number;
+  reason?: {
+    code: string;
+    message: string;
   } | null;
 }): SendMessageResponseDto => ({
   messageId: args.messageId,
+  messageType: "SMS",
   status: args.status,
   requestedAt: args.requestedAt.toISOString(),
-  provider: args.provider,
-  retry: args.retry
-    ? {
-        isRetryable: args.retry.isRetryable,
-        nextRetryAt: args.retry.nextRetryAt ? args.retry.nextRetryAt.toISOString() : null,
-        attemptNo: args.retry.attemptNo,
-      }
-    : null,
+  ...(args.reason !== undefined ? { reason: args.reason } : {}),
 });
 
 /**
@@ -98,60 +86,67 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
         messageId: existingMessage.id,
         status: existingMessage.status,
         requestedAt: existingMessage.requestedAt,
-        provider: null,
-        retry: null,
+        reason: {
+          code: "MESSAGE_DUPLICATE_REQUEST",
+          message: "중복 요청입니다. 기존 메시지 상태를 반환합니다.",
+        },
       });
     }
   }
 
-  // 3) Message / MessageEvent(REQUESTED) 생성
   const requestedAt = new Date();
-  const message = await prisma.message.create({
-    data: {
-      clientId: client.id,
-      idempotencyKey: input.idempotencyKey ?? null,
-      messageType: "SMS",
-      sendType: "NOW",
-      status: "PENDING",
-      recipientPhone: input.recipientPhone,
-      senderKey: input.senderKey,
-      content: input.content,
-      requestedAt,
-    },
-  });
-
-  await prisma.messageEvent.create({
-    data: {
-      messageId: message.id,
-      eventType: "REQUESTED",
-      detailJson: {
+  const { message, dispatch } = await prisma.$transaction(async (tx) => {
+    const createdMessage = await tx.message.create({
+      data: {
+        clientId: client.id,
+        idempotencyKey: input.idempotencyKey ?? null,
         messageType: "SMS",
+        sendType: "NOW",
+        status: "PENDING",
+        recipientPhone: input.recipientPhone,
+        senderKey: input.senderKey,
+        content: input.content,
+        requestedAt,
       },
-    },
-  });
+    });
 
-  // 4) 공급자 발송 시도 로그(ProviderDispatch) 생성 후 DISPATCHING 상태로 전이
-  const dispatch = await prisma.providerDispatch.create({
-    data: {
-      messageId: message.id,
-      attemptNo: 1,
-      maxRetry: DEFAULT_MAX_RETRY,
-      dispatchedAt: new Date(),
-      requestPayloadJson: buildProviderPayload(input),
-    },
-  });
+    await tx.messageEvent.create({
+      data: {
+        messageId: createdMessage.id,
+        eventType: "REQUESTED",
+        detailJson: {
+          messageType: "SMS",
+        },
+      },
+    });
 
-  await prisma.message.update({
-    where: { id: message.id },
-    data: { status: "DISPATCHING" },
-  });
+    const createdDispatch = await tx.providerDispatch.create({
+      data: {
+        messageId: createdMessage.id,
+        attemptNo: 1,
+        maxRetry: DEFAULT_MAX_RETRY,
+        dispatchedAt: new Date(),
+        requestPayloadJson: buildProviderPayload(input),
+      },
+    });
 
-  await prisma.messageEvent.create({
-    data: {
-      messageId: message.id,
-      eventType: "DISPATCH_ATTEMPTED",
-      detailJson: { attemptNo: 1, providerDispatchId: dispatch.id },
-    },
+    await tx.message.update({
+      where: { id: createdMessage.id },
+      data: { status: "DISPATCHING" },
+    });
+
+    await tx.messageEvent.create({
+      data: {
+        messageId: createdMessage.id,
+        eventType: "DISPATCH_ATTEMPTED",
+        detailJson: { attemptNo: 1, providerDispatchId: createdDispatch.id },
+      },
+    });
+
+    return {
+      message: createdMessage,
+      dispatch: createdDispatch,
+    };
   });
 
   try {
@@ -176,51 +171,47 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
     if (axios.isAxiosError(error)) {
       const nextRetryAt = new Date(Date.now() + getRetryDelayMs(dispatch.attemptNo));
 
-      await prisma.providerDispatch.update({
-        where: { id: dispatch.id },
-        data: {
-          respondedAt: new Date(),
-          responsePayloadJson: error.response?.data ?? null,
-          responseMessage: error.message,
-          isRetryable: true,
-          nextRetryAt,
-        },
-      });
-
-      await prisma.message.update({
-        where: { id: message.id },
-        data: {
-          status: "PENDING",
-          statusReasonCode: "PROVIDER_NETWORK_ERROR",
-          statusReasonMessage: error.message,
-        },
-      });
-
-      await prisma.messageEvent.create({
-        data: {
-          messageId: message.id,
-          eventType: "RETRIED",
-          detailJson: {
-            attemptNo: dispatch.attemptNo,
-            nextRetryAt: nextRetryAt.toISOString(),
-            reason: error.message,
+      await prisma.$transaction(async (tx) => {
+        await tx.providerDispatch.update({
+          where: { id: dispatch.id },
+          data: {
+            respondedAt: new Date(),
+            responsePayloadJson: error.response?.data ?? null,
+            responseMessage: error.message,
+            isRetryable: true,
+            nextRetryAt,
           },
-        },
+        });
+
+        await tx.message.update({
+          where: { id: message.id },
+          data: {
+            status: "PENDING",
+            statusReasonCode: "PROVIDER_NETWORK_ERROR",
+            statusReasonMessage: error.message,
+          },
+        });
+
+        await tx.messageEvent.create({
+          data: {
+            messageId: message.id,
+            eventType: "RETRIED",
+            detailJson: {
+              attemptNo: dispatch.attemptNo,
+              nextRetryAt: nextRetryAt.toISOString(),
+              reason: error.message,
+            },
+          },
+        });
       });
 
       return toResponseDto({
         messageId: message.id,
         status: "PENDING",
         requestedAt: message.requestedAt,
-        provider: {
-          responseCode: null,
-          responseMessage: error.message,
-          responseCount: null,
-        },
-        retry: {
-          isRetryable: true,
-          nextRetryAt,
-          attemptNo: dispatch.attemptNo,
+        reason: {
+          code: "MESSAGE_RETRY_SCHEDULED",
+          message: "공급자 일시 오류로 재시도가 예약되었습니다.",
         },
       });
     }
@@ -230,8 +221,7 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
 };
 
 /**
- * prcompany 비즈니스 응답(ResCd/ResMsg)을 해석하여
- * ProviderDispatch, Message, MessageEvent를 갱신합니다.
+ * prcompany 응답(ResCd/ResMsg)을 해석하여 ProviderDispatch, Message, MessageEvent를 갱신
  * @param args 메시지/시도 식별자와 공급자 응답 원문
  */
 const handleProviderBusinessResponse = async (args: {
@@ -248,131 +238,148 @@ const handleProviderBusinessResponse = async (args: {
   const isRetryable = isSuccess ? false : isPrcompanyRetryableResponseCode(providerResponse.ResCd);
   const nextRetryAt = !isSuccess && isRetryable ? new Date(Date.now() + getRetryDelayMs(args.attemptNo)) : null;
 
-  await prisma.providerDispatch.update({
-    where: { id: args.dispatchId },
-    data: {
-      respondedAt,
-      responsePayloadJson: providerResponse,
-      responseCount: providerResponse.Count ?? null,
-      responseCode: providerResponse.ResCd ?? null,
-      responseMessage: providerResponse.ResMsg ?? null,
-      responseMac: providerResponse.Mac ?? null,
-      isRetryable,
-      nextRetryAt,
-    },
-  });
-
   // ResCd=0: 공급자 접수 성공
   if (isSuccess) {
-    await prisma.message.update({
-      where: { id: args.messageId },
-      data: {
-        status: "ACCEPTED",
-        statusReasonCode: null,
-        statusReasonMessage: null,
-      },
-    });
-
-    await prisma.messageEvent.create({
-      data: {
-        messageId: args.messageId,
-        eventType: "ACCEPTED",
-        detailJson: {
-          responseCode: providerResponse.ResCd,
-          responseCount: providerResponse.Count,
+    await prisma.$transaction(async (tx) => {
+      await tx.providerDispatch.update({
+        where: { id: args.dispatchId },
+        data: {
+          respondedAt,
+          responsePayloadJson: providerResponse,
+          responseCount: providerResponse.Count ?? null,
+          responseCode: providerResponse.ResCd ?? null,
+          responseMessage: providerResponse.ResMsg ?? null,
+          responseMac: providerResponse.Mac ?? null,
+          isRetryable,
+          nextRetryAt,
         },
-      },
+      });
+
+      await tx.message.update({
+        where: { id: args.messageId },
+        data: {
+          status: "ACCEPTED",
+          statusReasonCode: null,
+          statusReasonMessage: null,
+        },
+      });
+
+      await tx.messageEvent.create({
+        data: {
+          messageId: args.messageId,
+          eventType: "ACCEPTED",
+          detailJson: {
+            responseCode: providerResponse.ResCd,
+            responseCount: providerResponse.Count,
+          },
+        },
+      });
     });
 
     return toResponseDto({
       messageId: args.messageId,
       status: "ACCEPTED",
       requestedAt: args.requestedAt,
-      provider: {
-        responseCode: providerResponse.ResCd ?? null,
-        responseMessage: providerResponse.ResMsg ?? null,
-        responseCount: providerResponse.Count ?? null,
-      },
-      retry: null,
+      reason: null,
     });
   }
 
   // ResCd!=0 이지만 정책상 재시도 가능한 경우
   if (isRetryable) {
-    await prisma.message.update({
-      where: { id: args.messageId },
-      data: {
-        status: "PENDING",
-        statusReasonCode: `PR_RESCODE_${providerResponse.ResCd}`,
-        statusReasonMessage: providerResponse.ResMsg ?? null,
-      },
-    });
-
-    await prisma.messageEvent.create({
-      data: {
-        messageId: args.messageId,
-        eventType: "RETRIED",
-        detailJson: {
-          attemptNo: args.attemptNo,
-          responseCode: providerResponse.ResCd,
+    await prisma.$transaction(async (tx) => {
+      await tx.providerDispatch.update({
+        where: { id: args.dispatchId },
+        data: {
+          respondedAt,
+          responsePayloadJson: providerResponse,
+          responseCount: providerResponse.Count ?? null,
+          responseCode: providerResponse.ResCd ?? null,
           responseMessage: providerResponse.ResMsg ?? null,
-          nextRetryAt: nextRetryAt?.toISOString() ?? null,
+          responseMac: providerResponse.Mac ?? null,
+          isRetryable,
+          nextRetryAt,
         },
-      },
+      });
+
+      await tx.message.update({
+        where: { id: args.messageId },
+        data: {
+          status: "PENDING",
+          statusReasonCode: `PR_RESCODE_${providerResponse.ResCd}`,
+          statusReasonMessage: providerResponse.ResMsg ?? null,
+        },
+      });
+
+      await tx.messageEvent.create({
+        data: {
+          messageId: args.messageId,
+          eventType: "RETRIED",
+          detailJson: {
+            attemptNo: args.attemptNo,
+            responseCode: providerResponse.ResCd,
+            responseMessage: providerResponse.ResMsg ?? null,
+            nextRetryAt: nextRetryAt?.toISOString() ?? null,
+          },
+        },
+      });
     });
 
     return toResponseDto({
       messageId: args.messageId,
       status: "PENDING",
       requestedAt: args.requestedAt,
-      provider: {
-        responseCode: providerResponse.ResCd ?? null,
-        responseMessage: providerResponse.ResMsg ?? null,
-        responseCount: providerResponse.Count ?? null,
-      },
-      retry: {
-        isRetryable: true,
-        nextRetryAt,
-        attemptNo: args.attemptNo,
+      reason: {
+        code: "MESSAGE_RETRY_SCHEDULED",
+        message: "공급자 일시 오류로 재시도가 예약되었습니다.",
       },
     });
   }
 
   // 재시도 불가인 경우 최종 실패 처리
-  await prisma.message.update({
-    where: { id: args.messageId },
-    data: {
-      status: "FAILED",
-      finalizedAt: new Date(),
-      statusReasonCode: `PR_RESCODE_${providerResponse.ResCd}`,
-      statusReasonMessage: providerResponse.ResMsg ?? null,
-    },
-  });
-
-  await prisma.messageEvent.create({
-    data: {
-      messageId: args.messageId,
-      eventType: "FAILED",
-      detailJson: {
-        responseCode: providerResponse.ResCd,
+  await prisma.$transaction(async (tx) => {
+    await tx.providerDispatch.update({
+      where: { id: args.dispatchId },
+      data: {
+        respondedAt,
+        responsePayloadJson: providerResponse,
+        responseCount: providerResponse.Count ?? null,
+        responseCode: providerResponse.ResCd ?? null,
         responseMessage: providerResponse.ResMsg ?? null,
+        responseMac: providerResponse.Mac ?? null,
+        isRetryable,
+        nextRetryAt,
       },
-    },
+    });
+
+    await tx.message.update({
+      where: { id: args.messageId },
+      data: {
+        status: "FAILED",
+        finalizedAt: new Date(),
+        statusReasonCode: `PR_RESCODE_${providerResponse.ResCd}`,
+        statusReasonMessage: providerResponse.ResMsg ?? null,
+      },
+    });
+
+    await tx.messageEvent.create({
+      data: {
+        messageId: args.messageId,
+        eventType: "FAILED",
+        detailJson: {
+          responseCode: providerResponse.ResCd,
+          responseMessage: providerResponse.ResMsg ?? null,
+        },
+      },
+    });
   });
 
   return toResponseDto({
     messageId: args.messageId,
     status: "FAILED",
     requestedAt: args.requestedAt,
-    provider: {
-      responseCode: providerResponse.ResCd ?? null,
-      responseMessage: providerResponse.ResMsg ?? null,
-      responseCount: providerResponse.Count ?? null,
-    },
-    retry: {
-      isRetryable: false,
-      nextRetryAt: null,
-      attemptNo: args.attemptNo,
+    reason: {
+      code: "MESSAGE_SEND_FAILED",
+      message: providerResponse.ResMsg ?? "메시지 발송에 실패했습니다.",
     },
   });
 };
