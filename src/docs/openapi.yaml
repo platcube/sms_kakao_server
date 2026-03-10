@@ -1,0 +1,49 @@
+openapi: 3.0.3
+info:
+  title: sms_kakao_server API
+  version: 1.0.0
+  description: 플랫큐브 문자/카카오 발송 API 문서
+servers:
+  - url: http://localhost:5100
+    description: Local
+tags:
+  - name: System Client
+    description: 시스템 운영용 클라이언트 관리 API
+  - name: Client Messages
+    description: 외주사 메시지 발송 API
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+  schemas:
+    CommonError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: COMMON_400_VALIDATION
+        message:
+          type: string
+          example: Request validation failed
+        details:
+          nullable: true
+    CommonSuccess:
+      type: object
+      required:
+        - success
+        - data
+        - error
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          nullable: true
+        error:
+          nullable: true
+paths: {}

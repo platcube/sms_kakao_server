@@ -9,4 +9,11 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/HealthLog.js'
+export type * from './models/Client.js'
+export type * from './models/Message.js'
+export type * from './models/ProviderDispatch.js'
+export type * from './models/MessageEvent.js'
+export type * from './models/DeliveryResultSnapshot.js'
+export type * from './models/BillingEvent.js'
+export type * from './models/ApiRequestLog.js'
 export type * from './commonInputTypes.js'

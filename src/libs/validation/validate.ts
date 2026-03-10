@@ -13,7 +13,6 @@ export const validateQuery =
   <T>(parser: ValidationParser<T>): RequestHandler =>
   (req: Request, res: Response, next: NextFunction) => {
     const parsed = parser(req.query);
-    console.log("parsed:", parsed);
 
     if (!parsed.success) {
       return res.status(400).json({
@@ -28,5 +27,26 @@ export const validateQuery =
     }
 
     res.locals.validatedQuery = parsed.data;
+    return next();
+  };
+
+export const validateBody =
+  <T>(parser: ValidationParser<T>): RequestHandler =>
+  (req: Request, res: Response, next: NextFunction) => {
+    const parsed = parser(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: {
+          code: "COMMON_400_VALIDATION",
+          message: "Request validation failed",
+          details: parsed.issues,
+        },
+      });
+    }
+
+    res.locals.validatedBody = parsed.data;
     return next();
   };

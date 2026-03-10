@@ -1,0 +1,143 @@
+import { Router } from "express";
+
+import { sendMessageController } from "@/api/v1/client/messages/send/send.controller";
+import { parseSendMessageBody } from "@/api/v1/client/messages/send/send.schema";
+import { clientApiKeyAuth } from "@/libs/auth/clientApiKeyAuth";
+import { validateBody } from "@/libs/validation/validate";
+
+export const sendRouter = Router();
+
+/**
+ * @openapi
+ * /api/v1/client/messages/send:
+ *   post:
+ *     tags:
+ *       - Client Messages
+ *     summary: SMS 즉시 발송 요청
+ *     description: 외주사 클라이언트가 플랫큐브를 통해 SMS 즉시 발송을 요청합니다.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             required:
+ *               - clientCode
+ *               - messageType
+ *               - recipientPhone
+ *               - senderKey
+ *               - content
+ *             properties:
+ *               clientCode:
+ *                 type: string
+ *                 description: 외주사 식별 코드
+ *                 example: CLIENT_A
+ *               messageType:
+ *                 type: string
+ *                 enum: [SMS]
+ *                 description: 메시지 타입 (현재 SMS만 지원)
+ *                 example: SMS
+ *               recipientPhone:
+ *                 type: string
+ *                 description: 수신자 전화번호(숫자만)
+ *                 example: "01012340001"
+ *               senderKey:
+ *                 type: string
+ *                 description: 발신번호(prcompany Callback)
+ *                 example: "15998898"
+ *               content:
+ *                 type: string
+ *                 description: 문자 본문(90바이트 이하)
+ *                 example: 테스트입니다.
+ *               idempotencyKey:
+ *                 type: string
+ *                 description: 중복 요청 방지 키
+ *                 example: order-20260226-1001-sms
+ *               etc1:
+ *                 type: string
+ *                 description: prcompany 부가 필드 1 (선택)
+ *                 example: "2148808000"
+ *               etc2:
+ *                 type: string
+ *                 description: prcompany 부가 필드 2 (선택)
+ *                 example: "1122334455"
+ *     responses:
+ *       '200':
+ *         description: 발송 요청 처리 성공(접수 성공/재시도 예정/최종 실패 포함)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [success, data, error]
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   required: [messageId, messageType, status, requestedAt]
+ *                   properties:
+ *                     messageId:
+ *                       type: integer
+ *                       example: 123
+ *                     messageType:
+ *                       type: string
+ *                       enum: [SMS]
+ *                       example: SMS
+ *                     status:
+ *                       type: string
+ *                       example: ACCEPTED
+ *                     requestedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2026-02-26T04:00:00.000Z"
+ *                     reason:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         code:
+ *                           type: string
+ *                           example: MESSAGE_RETRY_SCHEDULED
+ *                         message:
+ *                           type: string
+ *                           example: 공급자 일시 오류로 재시도가 예약되었습니다.
+ *                 error:
+ *                   nullable: true
+ *                   example: null
+ *             examples:
+ *               accepted:
+ *                 summary: 공급자 접수 성공
+ *                 value:
+ *                   success: true
+ *                   data:
+ *                     messageId: 123
+ *                     messageType: SMS
+ *                     status: ACCEPTED
+ *                     requestedAt: "2026-02-26T04:00:00.000Z"
+ *                     reason: null
+ *                   error: null
+ *               retryScheduled:
+ *                 summary: 재시도 예정
+ *                 value:
+ *                   success: true
+ *                   data:
+ *                     messageId: 124
+ *                     messageType: SMS
+ *                     status: PENDING
+ *                     requestedAt: "2026-02-26T04:00:10.000Z"
+ *                     reason:
+ *                       code: MESSAGE_RETRY_SCHEDULED
+ *                       message: 공급자 일시 오류로 재시도가 예약되었습니다.
+ *                   error: null
+ *       '400':
+ *         description: 요청 검증 실패
+ *       '401':
+ *         description: 인증 실패 (Authorization 또는 clientCode 오류)
+ *       '404':
+ *         description: 클라이언트 없음
+ */
+// SMS 즉시 발송 요청 엔드포인트
+sendRouter.post("/", validateBody(parseSendMessageBody), clientApiKeyAuth, sendMessageController);
