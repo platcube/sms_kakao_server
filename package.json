@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
-    "prisma:deploy": "npx prisma migrate deploy && npx prisma generate"
+    "prisma:deploy": "npx prisma migrate deploy && npx prisma generate",
+    "studio": "npx prisma studio"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.0.0",

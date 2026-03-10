@@ -40,6 +40,51 @@
 - `MMS` (이미지 포함)
 - `ALIMTALK` (카카오 알림톡)
 
+## 채널별 발송 정책 (현재 설계)
+
+- 즉시 발송 API: `/api/v1/client/messages/send`
+- 예약 발송 API: `/api/v1/client/messages/schedule`
+- 위 2개 API에서 `messageType`으로 채널을 분기합니다.
+  - `SMS`
+  - `LMS`
+  - `MMS`
+  - `ALIMTALK` (추후 발송 추가)
+
+요청 필드 분기 기준:
+
+- `SMS`
+  - `content` 90바이트 이하
+- `LMS`
+  - `content` 2000바이트 이하
+  - `title` 선택 (20바이트 이하)
+- `MMS`
+  - `content` 2000바이트 이하
+  - `fileName` 필수
+  - `title` 선택 (20바이트 이하)
+- `schedule`
+  - 위 채널별 조건 + `reservedTime` 필수
+
+## prcompany 연동 엔드포인트 매핑
+
+- `SMS 즉시`: `POST /sms/send`
+- `SMS 예약`: `POST /sms/reserved`
+- `LMS 즉시`: `POST /lms/send`
+- `LMS 예약`: `POST /lms/reserved`
+- `MMS 즉시`: `POST /mms/send`
+- `MMS 예약`: `POST /mms/reserved`
+
+공통 응답:
+
+- `Count`
+- `ResCd`
+- `ResMsg`
+- `Mac`
+
+응답코드 처리 원칙:
+
+- `ResCd === 0` -> 접수 성공(`ACCEPTED`)
+- `ResCd !== 0` -> 실패 코드 분류 후 `RETRIED` 또는 `FAILED`
+
 ## 핵심 플로우
 
 ### 1) 발송 요청
@@ -139,6 +184,24 @@ stateDiagram-v2
   - 메시지 이벤트 이력 조회 (`MessageEvent`)
 - `GET /api/v1/messages`
   - 클라이언트 기준 메시지 목록 조회 (기간/상태/유형 필터)
+
+### Client(외주사) 카카오 조회 API
+
+- `GET /api/v1/client/kakao/profile`
+  - 카카오 발신프로필 키 조회
+- `GET /api/v1/client/kakao/templates`
+  - 카카오 알림톡 템플릿 목록 조회
+- `GET /api/v1/client/kakao/templates/:templateCode`
+  - 카카오 알림톡 템플릿 내용 조회
+- `GET /api/v1/client/kakao/templates/:templateCode/button1`
+  - 카카오 알림톡 템플릿 버튼1 조회
+- `GET /api/v1/client/kakao/templates/:templateCode/button2`
+  - 카카오 알림톡 템플릿 버튼2 조회
+
+설계 기준:
+
+- 카카오 발송은 `messages/send`, `messages/schedule`에서 `messageType=ALIMTALK`으로 처리
+- 카카오 조회성 기능은 `/client/kakao/*`로 분리
 
 ### 운영/관리 API (내부용)
 
@@ -242,3 +305,37 @@ AGENT.md
 - 재시도 정책(횟수/간격)은 환경변수 또는 설정 파일로 관리
 - `traceId` 기반 요청 추적 로그 통일
 - 정산 중복 방지용 유니크 키/정책은 추후 확정
+
+## Swagger 작업 플로우 (YAML 기반)
+
+현재 `swagger-jsdoc`, `swagger-ui-express`는 설치된 상태를 기준으로 진행합니다.
+
+1. 문서 구조 생성
+- `docs/swagger/openapi.yaml`
+- `docs/swagger/paths/**`
+- `docs/swagger/components/**`
+
+2. 루트 OpenAPI 작성
+- `openapi`, `info`, `servers`, `tags` 정의
+- `components.securitySchemes.bearerAuth` 정의
+- `paths`에 `$ref` 연결
+
+3. 공통 컴포넌트 작성
+- 공통 응답 포맷(`{success,data,error}`)
+- 에러 응답(`400/401/404/500`)
+- 공통 스키마(`reason`, `pagination` 등)
+
+4. 1차 문서 대상 API 고정
+- `POST /api/v1/client/messages/send`
+- `POST /api/v1/client/messages/schedule`
+- `GET /api/v1/client/kakao/profile`
+- `GET /api/v1/client/kakao/templates`
+
+5. 앱에 Swagger 라우트 연결
+- `src/docs/swagger.ts`에서 `swagger-jsdoc` 초기화
+- `swagger-ui-express`로 `/docs` 서빙
+- `app.ts`에 `app.use("/docs", swaggerRouter)` 연결
+
+6. 동기화 규칙 적용
+- DTO/검증 스키마 변경 시 Swagger YAML 동시 수정
+- PR 체크리스트에 문서 반영 여부 포함

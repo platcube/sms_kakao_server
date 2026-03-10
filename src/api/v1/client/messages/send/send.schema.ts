@@ -2,10 +2,9 @@ import { ValidationResult } from "@/libs/validation/validate";
 import { SendMessageBodyDto } from "@/api/v1/client/messages/send/dto/send-message.dto";
 
 const isNonEmptyString = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
-
 const isOptionalString = (v: unknown): v is string | undefined => v === undefined || typeof v === "string";
-
 const PHONE_REGEX = /^[0-9]{9,20}$/;
+const MAX_RECIPIENT_COUNT = 100;
 
 // SMS 즉시 발송 요청 body 검증
 export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessageBodyDto> => {
@@ -15,20 +14,37 @@ export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessa
   const clientCode = source.clientCode;
   const messageType = source.messageType;
   const recipientPhone = source.recipientPhone;
+  const phones = source.phones;
   const senderKey = source.senderKey;
   const content = source.content;
   const idempotencyKey = source.idempotencyKey;
   const etc1 = source.etc1;
   const etc2 = source.etc2;
 
+  const recipientSource = recipientPhone ?? phones;
+  const normalizedPhones = Array.isArray(recipientSource)
+    ? recipientSource.map((v) => (typeof v === "string" ? v.trim() : v))
+    : null;
+
   if (!isNonEmptyString(clientCode)) issues.push({ field: "clientCode", reason: "clientCode is required" });
   if (messageType !== "SMS") issues.push({ field: "messageType", reason: "messageType must be 'SMS'" });
-  if (!isNonEmptyString(recipientPhone) || !PHONE_REGEX.test(recipientPhone.trim())) {
-    issues.push({ field: "recipientPhone", reason: "recipientPhone must be numeric string" });
+  if (!Array.isArray(normalizedPhones) || normalizedPhones.length === 0) {
+    issues.push({ field: "recipientPhone", reason: "recipientPhone or phones must be a non-empty array" });
+  } else {
+    if (normalizedPhones.length > MAX_RECIPIENT_COUNT) {
+      issues.push({ field: "recipientPhone", reason: `max ${MAX_RECIPIENT_COUNT} recipients are allowed` });
+    }
+
+    normalizedPhones.forEach((phone, index) => {
+      if (!isNonEmptyString(phone) || !PHONE_REGEX.test(phone)) {
+        issues.push({ field: `recipientPhone[${index}]`, reason: "phone must be numeric string" });
+      }
+    });
   }
   if (!isNonEmptyString(senderKey)) issues.push({ field: "senderKey", reason: "senderKey is required" });
   if (!isNonEmptyString(content)) issues.push({ field: "content", reason: "content is required" });
-  if (!isOptionalString(idempotencyKey)) issues.push({ field: "idempotencyKey", reason: "idempotencyKey must be string" });
+  if (!isOptionalString(idempotencyKey))
+    issues.push({ field: "idempotencyKey", reason: "idempotencyKey must be string" });
   if (!isOptionalString(etc1)) issues.push({ field: "etc1", reason: "etc1 must be string" });
   if (!isOptionalString(etc2)) issues.push({ field: "etc2", reason: "etc2 must be string" });
 
@@ -55,7 +71,7 @@ export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessa
     data: {
       clientCode: String(clientCode).trim(),
       messageType: "SMS",
-      recipientPhone: String(recipientPhone).trim(),
+      recipientPhone: normalizedPhones as string[],
       senderKey: String(senderKey).trim(),
       content: String(content),
       ...(isNonEmptyString(idempotencyKey) ? { idempotencyKey: idempotencyKey.trim() } : {}),

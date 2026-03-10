@@ -1,6 +1,5 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -15,13 +14,14 @@ model HealthLog {
 
 // 외주사(테넌트/클라이언트) 정보 테이블
 model Client {
-  id         Int          @id @default(autoincrement()) // 내부 클라이언트 식별자
-  createdAt  DateTime     @default(now()) // 레코드 생성 시각
-  updatedAt  DateTime     @updatedAt // 레코드 수정 시각
-  clientCode String       @unique @db.VarChar(50) // 클라이언트 유니크 코드
-  name       String       @db.VarChar(120) // 클라이언트 이름
-  status     ClientStatus @default(ACTIVE) // 클라이언트 이용 상태
-  apiKeyHash String       @db.VarChar(255) // API 키 해시값 - sha256으로 단방향
+  id          Int          @id @default(autoincrement()) // 내부 클라이언트 식별자
+  createdAt   DateTime     @default(now()) // 레코드 생성 시각
+  updatedAt   DateTime     @updatedAt // 레코드 수정 시각
+  clientCode  String       @unique @db.VarChar(50) // 클라이언트 유니크 코드
+  name        String       @db.VarChar(120) // 클라이언트 이름
+  status      ClientStatus @default(ACTIVE) // 클라이언트 이용 상태
+  apiKeyHash  String       @db.VarChar(255) // API 키 해시값 - sha256으로 단방향
+  senderPhone String       @db.VarChar(80) // 발신 번호 
   // rateLimitPerSecond Int          @default(20) // 초당 요청 제한값 - 요청 제한 횟수가 있는지?
   // dailyLimit         Int          @default(50000) // 일일 발송 제한값 - 요청 제한 횟수가 있는지?
 
@@ -39,7 +39,7 @@ model Message {
   messageType           MessageType // 메시지 유형(SMS/LMS/MMS/ALIMTALK)
   sendType              SendType // 즉시/예약 발송 구분
   status                MessageStatus @default(PENDING) // 현재 처리 상태
-  recipientPhone        String        @db.VarChar(30) // 수신자 전화번호
+  recipientPhone        String        @db.VarChar(1000) // 수신자 전화번호 목록(콤마 구분)
   senderKey             String        @db.VarChar(80) // 발신 번호 또는 발신프로필 키
   subject               String?       @db.VarChar(120) // 제목(LMS/MMS용)
   content               String        @db.Text // 메시지 본문

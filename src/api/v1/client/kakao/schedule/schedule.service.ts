@@ -1,20 +1,21 @@
 import axios from "axios";
 
-import { prisma } from "@/libs/prisma/client";
+import { ScheduleKakaoBodyDto, ScheduleKakaoResponseDto } from "@/api/v1/client/kakao/schedule/dto/schedule-kakao.dto";
 import { AppError } from "@/libs/error/app-error";
 import { ERROR_CODES } from "@/libs/error/error-codes";
-import { sendPrcompanySmsImmediate, type PrcompanySmsSendResponse } from "@/libs/integrations/prcompany/prcompany.sms";
-import { SendMessageBodyDto, SendMessageResponseDto } from "@/api/v1/client/messages/send/dto/send-message.dto";
+import {
+  PrcompanyKakaoSendResponse,
+  sendPrcompanyKakaoReserved,
+} from "@/libs/integrations/prcompany/prcompany.kakao";
+import { prisma } from "@/libs/prisma/client";
 
 const DEFAULT_MAX_RETRY = 3;
 
-// prcompany ResCd를 기준으로 재시도 가능 여부 판정
-const isPrcompanyRetryableResponseCode = (code: number) => {
-  const nonRetryableCodes = new Set([-2, -4, -5, -6, -7, -8, -9, -14]);
+const isRetryableKakaoReservedCode = (code: number) => {
+  const nonRetryableCodes = new Set([-2, -4, -5, -6, -7, -8, -9, -10, -11]);
   return !nonRetryableCodes.has(code);
 };
 
-// 발송 시도 번호(횟수)에 따른 재시도 지연시간(ms) 계산
 const getRetryDelayMs = (attemptNo: number) => {
   const baseByAttempt: Record<number, number> = {
     1: 30_000,
@@ -22,21 +23,32 @@ const getRetryDelayMs = (attemptNo: number) => {
     3: 600_000,
   };
 
-  const base = baseByAttempt[attemptNo] ?? 600_000; // 재시도 횟수에 따른 지수 백오프
-  const jitter = Math.floor(Math.random() * 5_000); // 소량 지터 적용
+  const base = baseByAttempt[attemptNo] ?? 600_000;
+  const jitter = Math.floor(Math.random() * 5_000);
   return base + jitter;
 };
 
-// ProviderDispatch.requestPayloadJson에 저장할 공급자 요청 payload 형태로 변환
-const buildProviderPayload = (input: SendMessageBodyDto) => ({
+const normalizeTempBtn1 = (value: ScheduleKakaoBodyDto["tempBtn1"]) => {
+  if (value === undefined) return undefined;
+  return typeof value === "string" ? value : JSON.stringify(value);
+};
+
+const buildProviderPayload = (input: ScheduleKakaoBodyDto) => ({
   Callback: input.senderKey,
-  Phones: input.recipientPhone.join(","),
-  Message: input.content,
-  ...(input.etc1 ? { Etc1: input.etc1 } : {}),
-  ...(input.etc2 ? { Etc2: input.etc2 } : {}),
+  Phones: input.recipientPhone,
+  ...(input.title ? { Title: input.title } : {}),
+  Message: input.message,
+  ProfileKey: input.profileKey,
+  TempCode: input.tempCode,
+  ...(normalizeTempBtn1(input.tempBtn1) ? { TempBtn1: normalizeTempBtn1(input.tempBtn1) } : {}),
+  FailFlag: String(input.failFlag ?? 0),
+  SMSGubn: input.smsGubn,
+  Etc1: "N",
+  ReservedTime: input.reservedTime,
+  ...(input.ketc1 ? { Ketc1: input.ketc1 } : {}),
+  ...(input.ketc2 ? { Ketc2: input.ketc2 } : {}),
 });
 
-// 서비스 내부 결과를 API 응답 DTO 형태로 변환
 const toResponseDto = (args: {
   messageId: number;
   status: string;
@@ -45,23 +57,15 @@ const toResponseDto = (args: {
     code: string;
     message: string;
   } | null;
-}): SendMessageResponseDto => ({
+}): ScheduleKakaoResponseDto => ({
   messageId: args.messageId,
-  messageType: "SMS",
+  messageType: "ALIMTALK",
   status: args.status,
   requestedAt: args.requestedAt.toISOString(),
   ...(args.reason !== undefined ? { reason: args.reason } : {}),
 });
 
-/**
- * SMS 즉시 발송 처리 서비스
- * @param input 외주사 요청 DTO (검증 완료 상태)
- * @returns 발송 처리 결과 DTO
- */
-export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMessageResponseDto> => {
-  const recipientPhonesCsv = input.recipientPhone.join(",");
-
-  // 1) 외주사(client) 식별 및 활성 상태 확인
+export const scheduleKakaoMessage = async (input: ScheduleKakaoBodyDto): Promise<ScheduleKakaoResponseDto> => {
   const client = await prisma.client.findFirst({
     where: {
       clientCode: input.clientCode,
@@ -73,7 +77,6 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
     throw new AppError(404, ERROR_CODES.COMMON_404_NOT_FOUND, "Client not found");
   }
 
-  // 2) idempotencyKey가 있으면 동일 요청 재처리 대신 기존 메시지 반환
   if (input.idempotencyKey) {
     const existingMessage = await prisma.message.findFirst({
       where: {
@@ -98,16 +101,22 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
 
   const requestedAt = new Date();
   const { message, dispatch } = await prisma.$transaction(async (tx) => {
+    const normalizedTempBtn1 = normalizeTempBtn1(input.tempBtn1);
+
     const createdMessage = await tx.message.create({
       data: {
         clientId: client.id,
         idempotencyKey: input.idempotencyKey ?? null,
-        messageType: "SMS",
-        sendType: "NOW",
-        status: "PENDING",
-        recipientPhone: recipientPhonesCsv,
+        messageType: "ALIMTALK",
+        sendType: "SCHEDULED",
+        status: "SCHEDULED",
+        recipientPhone: input.recipientPhone,
         senderKey: input.senderKey,
-        content: input.content,
+        subject: input.title ?? null,
+        content: input.message,
+        templateCode: input.tempCode,
+        ...(normalizedTempBtn1 ? { buttonsJson: { raw: normalizedTempBtn1 } } : {}),
+        scheduledAt: new Date(input.reservedTime.replace(" ", "T")),
         requestedAt,
       },
     });
@@ -115,9 +124,10 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
     await tx.messageEvent.create({
       data: {
         messageId: createdMessage.id,
-        eventType: "REQUESTED",
+        eventType: "SCHEDULED",
         detailJson: {
-          messageType: "SMS",
+          messageType: "ALIMTALK",
+          reservedTime: input.reservedTime,
         },
       },
     });
@@ -145,23 +155,26 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
       },
     });
 
-    return {
-      message: createdMessage,
-      dispatch: createdDispatch,
-    };
+    return { message: createdMessage, dispatch: createdDispatch };
   });
 
   try {
-    // 5) prcompany SMS 즉시 발송 호출
-    const providerResponse = await sendPrcompanySmsImmediate({
+    const providerResponse = await sendPrcompanyKakaoReserved({
       callback: input.senderKey,
       phones: input.recipientPhone,
-      message: input.content,
-      etc1: input.etc1,
-      etc2: input.etc2,
+      title: input.title,
+      message: input.message,
+      profileKey: input.profileKey,
+      tempCode: input.tempCode,
+      tempBtn1: normalizeTempBtn1(input.tempBtn1),
+      failFlag: input.failFlag ?? 0,
+      smsGubn: input.smsGubn,
+      reservedTime: input.reservedTime,
+      ketc1: input.ketc1,
+      ketc2: input.ketc2,
     });
 
-    return await handleProviderBusinessResponse({
+    return await handleProviderResponse({
       messageId: message.id,
       dispatchId: dispatch.id,
       providerResponse,
@@ -169,7 +182,6 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
       attemptNo: dispatch.attemptNo,
     });
   } catch (error) {
-    // 6) 네트워크/HTTP 레벨 오류는 재시도 가능 오류로 분류(초안 정책)
     if (axios.isAxiosError(error)) {
       const nextRetryAt = new Date(Date.now() + getRetryDelayMs(dispatch.attemptNo));
 
@@ -222,25 +234,20 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
   }
 };
 
-/**
- * prcompany 응답(ResCd/ResMsg)을 해석하여 ProviderDispatch, Message, MessageEvent를 갱신
- * @param args 메시지/시도 식별자와 공급자 응답 원문
- */
-const handleProviderBusinessResponse = async (args: {
+const handleProviderResponse = async (args: {
   messageId: number;
   dispatchId: number;
-  providerResponse: PrcompanySmsSendResponse;
+  providerResponse: PrcompanyKakaoSendResponse;
   requestedAt: Date;
   attemptNo: number;
-}): Promise<SendMessageResponseDto> => {
+}): Promise<ScheduleKakaoResponseDto> => {
   const { providerResponse } = args;
   const respondedAt = new Date();
 
   const isSuccess = providerResponse.ResCd === 0;
-  const isRetryable = isSuccess ? false : isPrcompanyRetryableResponseCode(providerResponse.ResCd);
+  const isRetryable = isSuccess ? false : isRetryableKakaoReservedCode(providerResponse.ResCd);
   const nextRetryAt = !isSuccess && isRetryable ? new Date(Date.now() + getRetryDelayMs(args.attemptNo)) : null;
 
-  // ResCd=0: 공급자 접수 성공
   if (isSuccess) {
     await prisma.$transaction(async (tx) => {
       await tx.providerDispatch.update({
@@ -286,7 +293,6 @@ const handleProviderBusinessResponse = async (args: {
     });
   }
 
-  // ResCd!=0 이지만 정책상 재시도 가능한 경우
   if (isRetryable) {
     await prisma.$transaction(async (tx) => {
       await tx.providerDispatch.update({
@@ -337,7 +343,6 @@ const handleProviderBusinessResponse = async (args: {
     });
   }
 
-  // 재시도 불가인 경우 최종 실패 처리
   await prisma.$transaction(async (tx) => {
     await tx.providerDispatch.update({
       where: { id: args.dispatchId },
@@ -381,7 +386,7 @@ const handleProviderBusinessResponse = async (args: {
     requestedAt: args.requestedAt,
     reason: {
       code: "MESSAGE_SEND_FAILED",
-      message: providerResponse.ResMsg ?? "메시지 발송에 실패했습니다.",
+      message: providerResponse.ResMsg ?? "카카오 알림톡 예약 발송에 실패했습니다.",
     },
   });
 };

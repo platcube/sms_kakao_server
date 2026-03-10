@@ -2,7 +2,7 @@
 export type SendMessageBodyDto = {
   clientCode: string; // 외주사 식별 코드
   messageType: "SMS" | "LMS" | "MMS" | "ALIMTALK"; // 현재 send 엔드포인트에서 허용하는 메시지 타입
-  recipientPhone: string; // 수신자 전화번호(단건)
+  recipientPhone: string[]; // 수신자 전화번호 목록(최소 1건)
   senderKey: string; // 발신번호(문서상 Callback)
   content: string; // 문자 본문(90바이트 이하)
   idempotencyKey?: string; // 중복 발송 방지 키
