@@ -5,6 +5,7 @@ const isNonEmptyString = (v: unknown): v is string => typeof v === "string" && v
 const isOptionalString = (v: unknown): v is string | undefined => v === undefined || typeof v === "string";
 const PHONE_REGEX = /^[0-9]{9,20}$/;
 const MAX_RECIPIENT_COUNT = 100;
+const MESSAGE_TYPES = new Set<SendMessageBodyDto["messageType"]>(["SMS", "LMS"]);
 
 // SMS 즉시 발송 요청 body 검증
 export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessageBodyDto> => {
@@ -16,6 +17,7 @@ export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessa
   const recipientPhone = source.recipientPhone;
   const phones = source.phones;
   const senderKey = source.senderKey;
+  const title = source.title;
   const content = source.content;
   const idempotencyKey = source.idempotencyKey;
   const etc1 = source.etc1;
@@ -27,7 +29,9 @@ export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessa
     : null;
 
   if (!isNonEmptyString(clientCode)) issues.push({ field: "clientCode", reason: "clientCode is required" });
-  if (messageType !== "SMS") issues.push({ field: "messageType", reason: "messageType must be 'SMS'" });
+  if (!isNonEmptyString(messageType) || !MESSAGE_TYPES.has(messageType as SendMessageBodyDto["messageType"])) {
+    issues.push({ field: "messageType", reason: "messageType must be 'SMS' or 'LMS'" });
+  }
   if (!Array.isArray(normalizedPhones) || normalizedPhones.length === 0) {
     issues.push({ field: "recipientPhone", reason: "recipientPhone or phones must be a non-empty array" });
   } else {
@@ -43,14 +47,23 @@ export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessa
   }
   if (!isNonEmptyString(senderKey)) issues.push({ field: "senderKey", reason: "senderKey is required" });
   if (!isNonEmptyString(content)) issues.push({ field: "content", reason: "content is required" });
+  if (!isOptionalString(title)) issues.push({ field: "title", reason: "title must be string" });
   if (!isOptionalString(idempotencyKey))
     issues.push({ field: "idempotencyKey", reason: "idempotencyKey must be string" });
   if (!isOptionalString(etc1)) issues.push({ field: "etc1", reason: "etc1 must be string" });
   if (!isOptionalString(etc2)) issues.push({ field: "etc2", reason: "etc2 must be string" });
 
-  // 문서 기준 SMS 본문 최대 90바이트
-  if (isNonEmptyString(content) && Buffer.byteLength(content, "utf8") > 90) {
+  // 문서 기준 SMS 본문 최대 90바이트, LMS 본문 최대 2000바이트
+  if (isNonEmptyString(content) && messageType === "SMS" && Buffer.byteLength(content, "utf8") > 90) {
     issues.push({ field: "content", reason: "content must be 90 bytes or less for SMS" });
+  }
+  if (isNonEmptyString(content) && messageType === "LMS" && Buffer.byteLength(content, "utf8") > 2000) {
+    issues.push({ field: "content", reason: "content must be 2000 bytes or less for LMS" });
+  }
+
+  // LMS 제목 최대 20바이트
+  if (isNonEmptyString(title) && Buffer.byteLength(title, "utf8") > 20) {
+    issues.push({ field: "title", reason: "title must be 20 bytes or less" });
   }
 
   // 문서 기준 Etc1/Etc2 최대 160바이트
@@ -70,9 +83,10 @@ export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessa
     success: true,
     data: {
       clientCode: String(clientCode).trim(),
-      messageType: "SMS",
+      messageType: messageType as "SMS" | "LMS",
       recipientPhone: normalizedPhones as string[],
       senderKey: String(senderKey).trim(),
+      ...(isNonEmptyString(title) ? { title: title.trim() } : {}),
       content: String(content),
       ...(isNonEmptyString(idempotencyKey) ? { idempotencyKey: idempotencyKey.trim() } : {}),
       ...(isOptionalString(etc1) && etc1 !== undefined ? { etc1: etc1.trim() } : {}),

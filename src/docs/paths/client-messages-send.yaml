@@ -3,8 +3,8 @@ paths:
     post:
       tags:
         - Client Messages
-      summary: SMS 즉시 발송 요청
-      description: 외주사 클라이언트가 플랫큐브를 통해 SMS 즉시 발송을 요청합니다.
+      summary: SMS/LMS 즉시 발송 요청
+      description: 외주사 클라이언트가 플랫큐브를 통해 SMS 또는 LMS 즉시 발송을 요청합니다.
       security:
         - bearerAuth: []
       requestBody:
@@ -22,8 +22,6 @@ paths:
               anyOf:
                 - required:
                     - recipientPhone
-                - required:
-                    - phones
               properties:
                 clientCode:
                   type: string
@@ -33,19 +31,12 @@ paths:
                   type: string
                   enum:
                     - SMS
-                  description: 메시지 타입 (현재 SMS만 지원)
-                  example: SMS
+                    - LMS
+                  description: 메시지 타입
+                  example: LMS
                 recipientPhone:
                   type: array
                   description: 수신자 전화번호 배열(숫자만, 1건 이상)
-                  items:
-                    type: string
-                    example: "01012340001"
-                  example:
-                    - "01012340001"
-                phones:
-                  type: array
-                  description: recipientPhone 별칭(호환용)
                   items:
                     type: string
                     example: "01012340001"
@@ -55,9 +46,13 @@ paths:
                   type: string
                   description: 발신번호(prcompany Callback)
                   example: "15998898"
+                title:
+                  type: string
+                  description: LMS 제목(선택, 20바이트 이하)
+                  example: 공지 안내
                 content:
                   type: string
-                  description: 문자 본문(90바이트 이하)
+                  description: 문자 본문(SMS 90바이트 이하, LMS 2000바이트 이하)
                   example: 테스트입니다.
                 idempotencyKey:
                   type: string
@@ -101,7 +96,8 @@ paths:
                         type: string
                         enum:
                           - SMS
-                        example: SMS
+                          - LMS
+                        example: LMS
                       status:
                         type: string
                         example: ACCEPTED
@@ -129,7 +125,7 @@ paths:
                     success: true
                     data:
                       messageId: 123
-                      messageType: SMS
+                      messageType: LMS
                       status: ACCEPTED
                       requestedAt: "2026-03-04T05:30:00.000Z"
                       reason: null
