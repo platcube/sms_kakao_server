@@ -1,0 +1,129 @@
+paths:
+  /api/v1/client/messages/schedule:
+    post:
+      tags:
+        - Client Messages
+      summary: SMS/LMS 예약 발송 요청
+      description: 외주사 클라이언트가 플랫큐브를 통해 SMS 또는 LMS 예약 발송을 요청합니다. 예약 발송은 현재 시간보다 10분 이후만 가능합니다.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - clientCode
+                - messageType
+                - recipientPhone
+                - senderKey
+                - content
+                - scheduledAt
+              properties:
+                clientCode:
+                  type: string
+                  description: 외주사 식별 코드
+                  example: CLIENT_A
+                messageType:
+                  type: string
+                  enum:
+                    - SMS
+                    - LMS
+                  description: 메시지 타입
+                  example: LMS
+                recipientPhone:
+                  type: array
+                  description: 수신자 전화번호 배열(숫자만, 1건 이상)
+                  items:
+                    type: string
+                    example: "01012340001"
+                  example:
+                    - "01012340001"
+                senderKey:
+                  type: string
+                  description: 발신번호(prcompany Callback)
+                  example: "15998898"
+                title:
+                  type: string
+                  description: LMS 제목(선택, 20바이트 이하)
+                  example: 공지 안내
+                content:
+                  type: string
+                  description: 문자 본문(SMS 90바이트 이하, LMS 2000바이트 이하)
+                  example: 예약 발송 테스트입니다.
+                scheduledAt:
+                  type: string
+                  description: 예약 시각(ISO 문자열 또는 YYYY-MM-DD HH:mm:ss, 현재 시각 +10분 이후)
+                  example: "2026-03-11 15:30:00"
+                idempotencyKey:
+                  type: string
+                  description: 중복 요청 방지 키
+                  example: order-20260311-1001-sms-scheduled
+                etc1:
+                  type: string
+                  description: prcompany 부가 필드 1 (선택)
+                  example: "2148808000"
+                etc2:
+                  type: string
+                  description: prcompany 부가 필드 2 (선택)
+                  example: "1122334455"
+      responses:
+        "200":
+          description: 예약 발송 요청 처리 성공(예약 접수 성공/재시도 예정/최종 실패 포함)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - error
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - messageId
+                      - messageType
+                      - status
+                      - requestedAt
+                    properties:
+                      messageId:
+                        type: integer
+                        example: 301
+                      messageType:
+                        type: string
+                        enum:
+                          - SMS
+                          - LMS
+                        example: SMS
+                      status:
+                        type: string
+                        example: SCHEDULED
+                      requestedAt:
+                        type: string
+                        format: date-time
+                        example: "2026-03-11T06:20:00.000Z"
+                      reason:
+                        type: object
+                        nullable: true
+                        properties:
+                          code:
+                            type: string
+                            example: MESSAGE_RETRY_SCHEDULED
+                          message:
+                            type: string
+                            example: 공급자 일시 오류로 재시도가 예약되었습니다.
+                  error:
+                    nullable: true
+                    example: null
+        "400":
+          description: 요청 검증 실패
+        "401":
+          description: 인증 실패 (Authorization 또는 clientCode 오류)
+        "404":
+          description: 클라이언트 없음
