@@ -3,7 +3,11 @@ import axios from "axios";
 import { prisma } from "@/libs/prisma/client";
 import { AppError } from "@/libs/error/app-error";
 import { ERROR_CODES } from "@/libs/error/error-codes";
-import { sendPrcompanySmsImmediate, type PrcompanySmsSendResponse } from "@/libs/integrations/prcompany/prcompany.sms";
+import {
+  sendPrcompanyLmsImmediate,
+  sendPrcompanySmsImmediate,
+  type PrcompanySmsSendResponse,
+} from "@/libs/integrations/prcompany/prcompany.sms";
 import { SendMessageBodyDto, SendMessageResponseDto } from "@/api/v1/client/messages/send/dto/send-message.dto";
 
 const DEFAULT_MAX_RETRY = 3;
@@ -31,6 +35,7 @@ const getRetryDelayMs = (attemptNo: number) => {
 const buildProviderPayload = (input: SendMessageBodyDto) => ({
   Callback: input.senderKey,
   Phones: input.recipientPhone.join(","),
+  ...(input.title ? { Title: input.title } : {}),
   Message: input.content,
   ...(input.etc1 ? { Etc1: input.etc1 } : {}),
   ...(input.etc2 ? { Etc2: input.etc2 } : {}),
@@ -39,6 +44,7 @@ const buildProviderPayload = (input: SendMessageBodyDto) => ({
 // 서비스 내부 결과를 API 응답 DTO 형태로 변환
 const toResponseDto = (args: {
   messageId: number;
+  messageType: "SMS" | "LMS";
   status: string;
   requestedAt: Date;
   reason?: {
@@ -47,7 +53,7 @@ const toResponseDto = (args: {
   } | null;
 }): SendMessageResponseDto => ({
   messageId: args.messageId,
-  messageType: "SMS",
+  messageType: args.messageType,
   status: args.status,
   requestedAt: args.requestedAt.toISOString(),
   ...(args.reason !== undefined ? { reason: args.reason } : {}),
@@ -60,6 +66,7 @@ const toResponseDto = (args: {
  */
 export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMessageResponseDto> => {
   const recipientPhonesCsv = input.recipientPhone.join(",");
+  const messageType = input.messageType;
 
   // 1) 외주사(client) 식별 및 활성 상태 확인
   const client = await prisma.client.findFirst({
@@ -86,6 +93,7 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
     if (existingMessage) {
       return toResponseDto({
         messageId: existingMessage.id,
+        messageType: existingMessage.messageType as "SMS" | "LMS",
         status: existingMessage.status,
         requestedAt: existingMessage.requestedAt,
         reason: {
@@ -102,11 +110,12 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
       data: {
         clientId: client.id,
         idempotencyKey: input.idempotencyKey ?? null,
-        messageType: "SMS",
+        messageType,
         sendType: "NOW",
         status: "PENDING",
         recipientPhone: recipientPhonesCsv,
         senderKey: input.senderKey,
+        subject: input.title ?? null,
         content: input.content,
         requestedAt,
       },
@@ -117,7 +126,7 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
         messageId: createdMessage.id,
         eventType: "REQUESTED",
         detailJson: {
-          messageType: "SMS",
+          messageType,
         },
       },
     });
@@ -152,17 +161,28 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
   });
 
   try {
-    // 5) prcompany SMS 즉시 발송 호출
-    const providerResponse = await sendPrcompanySmsImmediate({
-      callback: input.senderKey,
-      phones: input.recipientPhone,
-      message: input.content,
-      etc1: input.etc1,
-      etc2: input.etc2,
-    });
+    // 5) prcompany SMS/LMS 즉시 발송 호출
+    const providerResponse =
+      messageType === "LMS"
+        ? await sendPrcompanyLmsImmediate({
+            callback: input.senderKey,
+            phones: input.recipientPhone,
+            title: input.title,
+            message: input.content,
+            etc1: input.etc1,
+            etc2: input.etc2,
+          })
+        : await sendPrcompanySmsImmediate({
+            callback: input.senderKey,
+            phones: input.recipientPhone,
+            message: input.content,
+            etc1: input.etc1,
+            etc2: input.etc2,
+          });
 
     return await handleProviderBusinessResponse({
       messageId: message.id,
+      messageType,
       dispatchId: dispatch.id,
       providerResponse,
       requestedAt: message.requestedAt,
@@ -209,6 +229,7 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
 
       return toResponseDto({
         messageId: message.id,
+        messageType,
         status: "PENDING",
         requestedAt: message.requestedAt,
         reason: {
@@ -228,6 +249,7 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
  */
 const handleProviderBusinessResponse = async (args: {
   messageId: number;
+  messageType: "SMS" | "LMS";
   dispatchId: number;
   providerResponse: PrcompanySmsSendResponse;
   requestedAt: Date;
@@ -280,6 +302,7 @@ const handleProviderBusinessResponse = async (args: {
 
     return toResponseDto({
       messageId: args.messageId,
+      messageType: args.messageType,
       status: "ACCEPTED",
       requestedAt: args.requestedAt,
       reason: null,
@@ -328,6 +351,7 @@ const handleProviderBusinessResponse = async (args: {
 
     return toResponseDto({
       messageId: args.messageId,
+      messageType: args.messageType,
       status: "PENDING",
       requestedAt: args.requestedAt,
       reason: {
@@ -377,6 +401,7 @@ const handleProviderBusinessResponse = async (args: {
 
   return toResponseDto({
     messageId: args.messageId,
+    messageType: args.messageType,
     status: "FAILED",
     requestedAt: args.requestedAt,
     reason: {

@@ -1,10 +1,10 @@
 paths:
-  /api/v1/client/messages/send:
+  /api/v1/client/messages/schedule:
     post:
       tags:
         - Client Messages
-      summary: SMS/LMS 즉시 발송 요청
-      description: 외주사 클라이언트가 플랫큐브를 통해 SMS 또는 LMS 즉시 발송을 요청합니다.
+      summary: SMS/LMS 예약 발송 요청
+      description: 외주사 클라이언트가 플랫큐브를 통해 SMS 또는 LMS 예약 발송을 요청합니다. 예약 발송은 현재 시간보다 10분 이후만 가능합니다.
       security:
         - bearerAuth: []
       requestBody:
@@ -17,11 +17,10 @@ paths:
               required:
                 - clientCode
                 - messageType
+                - recipientPhone
                 - senderKey
                 - content
-              anyOf:
-                - required:
-                    - recipientPhone
+                - scheduledAt
               properties:
                 clientCode:
                   type: string
@@ -53,11 +52,15 @@ paths:
                 content:
                   type: string
                   description: 문자 본문(SMS 90바이트 이하, LMS 2000바이트 이하)
-                  example: 테스트입니다.
+                  example: 예약 발송 테스트입니다.
+                scheduledAt:
+                  type: string
+                  description: 예약 시각(ISO 문자열 또는 YYYY-MM-DD HH:mm:ss, 현재 시각 +10분 이후)
+                  example: "2026-03-11 15:30:00"
                 idempotencyKey:
                   type: string
                   description: 중복 요청 방지 키
-                  example: order-20260304-1001-sms
+                  example: order-20260311-1001-sms-scheduled
                 etc1:
                   type: string
                   description: prcompany 부가 필드 1 (선택)
@@ -68,7 +71,7 @@ paths:
                   example: "1122334455"
       responses:
         "200":
-          description: 발송 요청 처리 성공(접수 성공/재시도 예정/최종 실패 포함)
+          description: 예약 발송 요청 처리 성공(예약 접수 성공/재시도 예정/최종 실패 포함)
           content:
             application/json:
               schema:
@@ -91,20 +94,20 @@ paths:
                     properties:
                       messageId:
                         type: integer
-                        example: 123
+                        example: 301
                       messageType:
                         type: string
                         enum:
                           - SMS
                           - LMS
-                        example: LMS
+                        example: SMS
                       status:
                         type: string
-                        example: ACCEPTED
+                        example: SCHEDULED
                       requestedAt:
                         type: string
                         format: date-time
-                        example: "2026-03-04T05:30:00.000Z"
+                        example: "2026-03-11T06:20:00.000Z"
                       reason:
                         type: object
                         nullable: true
@@ -118,31 +121,6 @@ paths:
                   error:
                     nullable: true
                     example: null
-              examples:
-                accepted:
-                  summary: 공급자 접수 성공
-                  value:
-                    success: true
-                    data:
-                      messageId: 123
-                      messageType: LMS
-                      status: ACCEPTED
-                      requestedAt: "2026-03-04T05:30:00.000Z"
-                      reason: null
-                    error: null
-                retryScheduled:
-                  summary: 재시도 예정
-                  value:
-                    success: true
-                    data:
-                      messageId: 124
-                      messageType: SMS
-                      status: PENDING
-                      requestedAt: "2026-03-04T05:31:00.000Z"
-                      reason:
-                        code: MESSAGE_RETRY_SCHEDULED
-                        message: 공급자 일시 오류로 재시도가 예약되었습니다.
-                    error: null
         "400":
           description: 요청 검증 실패
         "401":
