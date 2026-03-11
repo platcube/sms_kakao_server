@@ -44,3 +44,38 @@ export { Prisma }
  * 
  */
 export type HealthLog = Prisma.HealthLogModel
+/**
+ * Model Client
+ * 
+ */
+export type Client = Prisma.ClientModel
+/**
+ * Model Message
+ * 
+ */
+export type Message = Prisma.MessageModel
+/**
+ * Model ProviderDispatch
+ * 
+ */
+export type ProviderDispatch = Prisma.ProviderDispatchModel
+/**
+ * Model MessageEvent
+ * 
+ */
+export type MessageEvent = Prisma.MessageEventModel
+/**
+ * Model DeliveryResultSnapshot
+ * 
+ */
+export type DeliveryResultSnapshot = Prisma.DeliveryResultSnapshotModel
+/**
+ * Model BillingEvent
+ * 
+ */
+export type BillingEvent = Prisma.BillingEventModel
+/**
+ * Model ApiRequestLog
+ * 
+ */
+export type ApiRequestLog = Prisma.ApiRequestLogModel

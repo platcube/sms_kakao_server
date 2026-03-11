@@ -4,7 +4,7 @@ export const getHealth = (query: HealthQueryDto): HealthDataDto => {
   const base: HealthDataDto = {
     status: "ok",
     uptimeSec: Number(process.uptime().toFixed(0)),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   if (query.verbose) {

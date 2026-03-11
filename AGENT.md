@@ -135,6 +135,32 @@
 
 - .env에 사용하는 변수들은 대문자+스네이크로 사용하며 값은 ""를 붙이지 않는다.
 
+## This Project Rules
+
+- `Message`는 발송 요청 원본 레코드이며 1회만 생성한다. 재시도 시 `Message`를 새로 만들지 않는다.
+- `ProviderDispatch`는 prcompany 호출 시도(재시도 포함) 로그 테이블로 사용하며 시도할 때마다 새 레코드를 추가한다.
+- `ProviderDispatch.attemptNo`는 1부터 시작하며 동일 `Message`에 대해 호출할 때마다 1씩 증가시킨다.
+- `ProviderDispatch.dispatchedAt`는 prcompany API 호출 시작 시각, `respondedAt`는 응답 수신 시각으로 기록한다.
+- prcompany 응답 `ResCd` 기준으로 재시도 가능 여부(`isRetryable`)를 내부 정책으로 판정한다. 원본 응답코드는 `responseCode`, 응답메시지는 `responseMessage`에 저장한다.
+- 재시도 불가 에러(예: 인증 실패, 필수값 누락, 잘못된 전화번호/템플릿)는 즉시 `Message.status=FAILED`로 종료한다.
+- 재시도 가능 에러(예: 타임아웃, 네트워크 오류, 공급자 일시 장애)는 `nextRetryAt`를 계산하여 재시도 큐/스케줄러 대상에 넣는다.
+- 기본 재시도 정책은 최대 3회(`maxRetry=3`)를 기본값으로 하며, 간격은 지수 백오프(예: 30초 -> 2분 -> 10분) + 지터를 사용한다.
+- 재시도 정책(최대 횟수/간격)은 하드코딩하지 말고 환경변수 또는 설정 파일에서 변경 가능하게 구현한다.
+- `Message.status`는 현재 상태 스냅샷으로만 사용하고, 상태 변화의 상세 이력은 `MessageEvent`에 append-only로 기록한다.
+- 발송 시 최소 이벤트 흐름은 `REQUESTED -> DISPATCH_ATTEMPTED -> (ACCEPTED | RETRIED | FAILED)`를 따른다.
+- 예약 발송은 `Message.sendType=SCHEDULED`, `Message.status=SCHEDULED`, `scheduledAt`으로 저장하고 스케줄러가 발송 시점에 처리한다.
+- 예약 취소가 가능한 경우 `CANCELED` 상태 전이는 `SCHEDULED` 상태에서만 허용한다.
+- `ACCEPTED`는 공급자 접수 성공 상태이며 최종 전달 성공과 동일하지 않다. 최종 전달 결과는 결과조회 배치로 반영한다.
+- `DeliveryResultSnapshot`는 prcompany 전송결과 조회 API(일/월 집계)의 응답 스냅샷 저장 테이블로 사용한다.
+- `DeliveryResultSnapshot`는 `(periodType, periodStart)` 기준으로 유니크하게 관리하며 동일 기간 재조회 시 upsert한다.
+- 결과조회 스케줄러는 최소 일 단위(`DAY`)로 운영하고, 정산 정확도를 위해 최근 3~7일 백필 재조회 배치를 추가한다.
+- 월 단위(`MONTH`) 결과조회는 정산 검증/대사용으로 사용하며 클라이언트 청구 기준 테이블로 직접 사용하지 않는다.
+- 클라이언트 정산의 기준 테이블은 `BillingEvent`이며, `DeliveryResultSnapshot`는 공급자 수치 대사(검증) 용도로만 사용한다.
+- `BillingEvent` 생성 시점(공급자 접수 성공 기준/최종 성공 기준)은 프로젝트 정책으로 명확히 고정하고 혼용하지 않는다.
+- `BillingEvent`는 메시지 단위 과금 이벤트로 기록하며 월 청구서는 `billingMonth` 기준 집계로 생성한다.
+- 발송/재시도/결과조회/정산 배치 로그에는 `traceId`를 포함하고 민감정보(전화번호, 본문, 키)는 마스킹 규칙을 적용한다.
+- 공급자 요청/응답 원문(`requestPayloadJson`, `responsePayloadJson`, `rawJson`) 저장 시 민감정보 마스킹 또는 최소 저장 원칙을 적용한다.
+
 ## Workflow
 
 1. 관련 파일 탐색: `rg`, `find` 우선 사용.

@@ -51,7 +51,14 @@ export const AnyNull = runtime.AnyNull
 
 
 export const ModelName = {
-  HealthLog: 'HealthLog'
+  HealthLog: 'HealthLog',
+  Client: 'Client',
+  Message: 'Message',
+  ProviderDispatch: 'ProviderDispatch',
+  MessageEvent: 'MessageEvent',
+  DeliveryResultSnapshot: 'DeliveryResultSnapshot',
+  BillingEvent: 'BillingEvent',
+  ApiRequestLog: 'ApiRequestLog'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -78,10 +85,219 @@ export const HealthLogScalarFieldEnum = {
 export type HealthLogScalarFieldEnum = (typeof HealthLogScalarFieldEnum)[keyof typeof HealthLogScalarFieldEnum]
 
 
+export const ClientScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  clientCode: 'clientCode',
+  name: 'name',
+  status: 'status',
+  apiKeyHash: 'apiKeyHash'
+} as const
+
+export type ClientScalarFieldEnum = (typeof ClientScalarFieldEnum)[keyof typeof ClientScalarFieldEnum]
+
+
+export const MessageScalarFieldEnum = {
+  id: 'id',
+  idempotencyKey: 'idempotencyKey',
+  messageType: 'messageType',
+  sendType: 'sendType',
+  status: 'status',
+  recipientPhone: 'recipientPhone',
+  senderKey: 'senderKey',
+  subject: 'subject',
+  content: 'content',
+  templateCode: 'templateCode',
+  templateVariablesJson: 'templateVariablesJson',
+  buttonsJson: 'buttonsJson',
+  mediaUrl: 'mediaUrl',
+  scheduledAt: 'scheduledAt',
+  requestedAt: 'requestedAt',
+  finalizedAt: 'finalizedAt',
+  statusReasonCode: 'statusReasonCode',
+  statusReasonMessage: 'statusReasonMessage',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  clientId: 'clientId'
+} as const
+
+export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]
+
+
+export const ProviderDispatchScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  providerRequestId: 'providerRequestId',
+  requestPayloadJson: 'requestPayloadJson',
+  responsePayloadJson: 'responsePayloadJson',
+  responseCount: 'responseCount',
+  responseCode: 'responseCode',
+  responseMessage: 'responseMessage',
+  responseMac: 'responseMac',
+  isRetryable: 'isRetryable',
+  attemptNo: 'attemptNo',
+  maxRetry: 'maxRetry',
+  nextRetryAt: 'nextRetryAt',
+  dispatchedAt: 'dispatchedAt',
+  respondedAt: 'respondedAt',
+  messageId: 'messageId'
+} as const
+
+export type ProviderDispatchScalarFieldEnum = (typeof ProviderDispatchScalarFieldEnum)[keyof typeof ProviderDispatchScalarFieldEnum]
+
+
+export const MessageEventScalarFieldEnum = {
+  id: 'id',
+  eventAt: 'eventAt',
+  eventType: 'eventType',
+  detailJson: 'detailJson',
+  messageId: 'messageId'
+} as const
+
+export type MessageEventScalarFieldEnum = (typeof MessageEventScalarFieldEnum)[keyof typeof MessageEventScalarFieldEnum]
+
+
+export const DeliveryResultSnapshotScalarFieldEnum = {
+  id: 'id',
+  periodType: 'periodType',
+  periodStart: 'periodStart',
+  periodEnd: 'periodEnd',
+  totalCount: 'totalCount',
+  successCount: 'successCount',
+  failedCount: 'failedCount',
+  responseCode: 'responseCode',
+  responseMsg: 'responseMsg',
+  rawJson: 'rawJson',
+  syncedAt: 'syncedAt'
+} as const
+
+export type DeliveryResultSnapshotScalarFieldEnum = (typeof DeliveryResultSnapshotScalarFieldEnum)[keyof typeof DeliveryResultSnapshotScalarFieldEnum]
+
+
+export const BillingEventScalarFieldEnum = {
+  id: 'id',
+  billable: 'billable',
+  unitPrice: 'unitPrice',
+  costPrice: 'costPrice',
+  marginAmount: 'marginAmount',
+  billingMonth: 'billingMonth',
+  billingStatus: 'billingStatus',
+  createdAt: 'createdAt',
+  clientId: 'clientId',
+  messageId: 'messageId'
+} as const
+
+export type BillingEventScalarFieldEnum = (typeof BillingEventScalarFieldEnum)[keyof typeof BillingEventScalarFieldEnum]
+
+
+export const ApiRequestLogScalarFieldEnum = {
+  id: 'id',
+  path: 'path',
+  method: 'method',
+  clientIp: 'clientIp',
+  httpStatus: 'httpStatus',
+  traceId: 'traceId',
+  createdAt: 'createdAt',
+  clientId: 'clientId'
+} as const
+
+export type ApiRequestLogScalarFieldEnum = (typeof ApiRequestLogScalarFieldEnum)[keyof typeof ApiRequestLogScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const ClientOrderByRelevanceFieldEnum = {
+  clientCode: 'clientCode',
+  name: 'name',
+  apiKeyHash: 'apiKeyHash'
+} as const
+
+export type ClientOrderByRelevanceFieldEnum = (typeof ClientOrderByRelevanceFieldEnum)[keyof typeof ClientOrderByRelevanceFieldEnum]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+export const QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+} as const
+
+export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const MessageOrderByRelevanceFieldEnum = {
+  idempotencyKey: 'idempotencyKey',
+  recipientPhone: 'recipientPhone',
+  senderKey: 'senderKey',
+  subject: 'subject',
+  content: 'content',
+  templateCode: 'templateCode',
+  mediaUrl: 'mediaUrl',
+  statusReasonCode: 'statusReasonCode',
+  statusReasonMessage: 'statusReasonMessage'
+} as const
+
+export type MessageOrderByRelevanceFieldEnum = (typeof MessageOrderByRelevanceFieldEnum)[keyof typeof MessageOrderByRelevanceFieldEnum]
+
+
+export const ProviderDispatchOrderByRelevanceFieldEnum = {
+  providerRequestId: 'providerRequestId',
+  responseMessage: 'responseMessage',
+  responseMac: 'responseMac'
+} as const
+
+export type ProviderDispatchOrderByRelevanceFieldEnum = (typeof ProviderDispatchOrderByRelevanceFieldEnum)[keyof typeof ProviderDispatchOrderByRelevanceFieldEnum]
+
+
+export const DeliveryResultSnapshotOrderByRelevanceFieldEnum = {
+  responseMsg: 'responseMsg'
+} as const
+
+export type DeliveryResultSnapshotOrderByRelevanceFieldEnum = (typeof DeliveryResultSnapshotOrderByRelevanceFieldEnum)[keyof typeof DeliveryResultSnapshotOrderByRelevanceFieldEnum]
+
+
+export const BillingEventOrderByRelevanceFieldEnum = {
+  billingMonth: 'billingMonth'
+} as const
+
+export type BillingEventOrderByRelevanceFieldEnum = (typeof BillingEventOrderByRelevanceFieldEnum)[keyof typeof BillingEventOrderByRelevanceFieldEnum]
+
+
+export const ApiRequestLogOrderByRelevanceFieldEnum = {
+  path: 'path',
+  clientIp: 'clientIp',
+  traceId: 'traceId'
+} as const
+
+export type ApiRequestLogOrderByRelevanceFieldEnum = (typeof ApiRequestLogOrderByRelevanceFieldEnum)[keyof typeof ApiRequestLogOrderByRelevanceFieldEnum]
 

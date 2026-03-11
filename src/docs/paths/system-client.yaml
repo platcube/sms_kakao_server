@@ -1,0 +1,122 @@
+paths:
+  /api/v1/system/client:
+    post:
+      tags:
+        - System Client
+      summary: 클라이언트 생성
+      description: |
+        시스템 운영자가 외주사 클라이언트를 생성합니다.
+        서버가 raw API Key를 생성하고, DB에는 hash만 저장합니다.
+        응답의 `apiKey`는 1회 확인 후 안전한 채널로 전달해야 합니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - clientCode
+                - name
+                - senderPhone
+              properties:
+                clientCode:
+                  type: string
+                  description: 외주사 식별 코드 (영문/숫자/_/-)
+                  example: CLIENT_A
+                name:
+                  type: string
+                  description: 클라이언트 표시 이름
+                  example: 외주사 A
+                senderPhone:
+                  type: string
+                  description: 기본 발신 번호
+                  example: "15998898"
+                status:
+                  type: string
+                  enum:
+                    - ACTIVE
+                    - INACTIVE
+                  default: ACTIVE
+                  description: 클라이언트 상태
+      responses:
+        "201":
+          description: 생성 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - error
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - id
+                      - clientCode
+                      - name
+                      - senderPhone
+                      - status
+                      - apiKey
+                      - createdAt
+                    properties:
+                      id:
+                        type: integer
+                        example: 12
+                      clientCode:
+                        type: string
+                        example: CLIENT_A
+                      name:
+                        type: string
+                        example: 외주사 A
+                      senderPhone:
+                        type: string
+                        example: "15998898"
+                      status:
+                        type: string
+                        example: ACTIVE
+                      apiKey:
+                        type: string
+                        description: 생성 시점 1회 노출되는 raw API key
+                        example: pc_8c8af10f7f4f8459cfca8d42d68fca12d110f6d145c2bf782e3baed4a3258d6e
+                      createdAt:
+                        type: string
+                        format: date-time
+                        example: "2026-03-04T05:10:00.000Z"
+                  error:
+                    nullable: true
+                    example: null
+        "400":
+          description: 요청 검증 실패 또는 중복 clientCode
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - error
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  data:
+                    nullable: true
+                    example: null
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        example: COMMON_400_VALIDATION
+                      message:
+                        type: string
+                        example: clientCode already exists
+                      details:
+                        nullable: true
+
