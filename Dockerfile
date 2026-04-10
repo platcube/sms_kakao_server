@@ -9,7 +9,8 @@ FROM deps AS builder
 COPY tsconfig.json ./
 COPY prisma ./prisma
 COPY src ./src
-RUN npm run build
+RUN npm run prisma:deploy
+RUN rm -rf build && npm run build
 
 FROM base AS runner
 ENV NODE_ENV=production
