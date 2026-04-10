@@ -28,6 +28,8 @@ model Client {
   messages       Message[] // 클라이언트의 발송 메시지 목록
   billingEvents  BillingEvent[] // 클라이언트 정산 이벤트 목록
   apiRequestLogs ApiRequestLog[] // 클라이언트 API 호출 로그 목록
+  kakaoTemplates ClientKakaoTemplate[] // 클라이언트별 카카오 템플릿 매핑 목록
+  kakaoProfiles  KakaoProfile[] // 클라이언트별 발신 프로필 목록
 
   @@index([status]) // 상태 기준 조회 인덱스
 }
@@ -64,6 +66,68 @@ model Message {
   @@index([clientId, requestedAt]) // 클라이언트별 최근 요청 조회
   @@index([status, scheduledAt]) // 상태/예약시각 기준 워커 조회
   @@index([messageType, requestedAt]) // 유형별 통계 조회
+}
+
+// 카카오 발신프로필 정보 테이블
+model KakaoProfile {
+  id          Int                @id @default(autoincrement()) // 내부 식별자
+  createdAt   DateTime           @default(now()) // 레코드 생성 시각
+  updatedAt   DateTime           @updatedAt // 레코드 수정 시각
+  profileKey  String             @unique @db.VarChar(120) // 카카오 발신프로필 키
+  name        String             @db.VarChar(120) // 발신프로필 이름
+  channelName String?            @db.VarChar(120) // 카카오 채널명
+  status      KakaoProfileStatus @default(ACTIVE) // 발신프로필 사용 상태
+
+  templates KakaoTemplate[] // 발신프로필에 속한 템플릿 목록
+  client    Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  clientId  Int
+
+  @@index([status]) // 상태 기준 조회 인덱스
+  @@index([clientId, status]) // 클라이언트별 프로필 조회 인덱스
+}
+
+// 카카오 알림톡 템플릿 원본 관리 테이블
+model KakaoTemplate {
+  id              Int                 @id @default(autoincrement()) // 내부 식별자
+  createdAt       DateTime            @default(now()) // 레코드 생성 시각
+  updatedAt       DateTime            @updatedAt // 레코드 수정 시각
+  templateCode    String              @unique @db.VarChar(80) // 카카오 템플릿 코드
+  name            String              @db.VarChar(120) // 템플릿 이름
+  // templateTitle   String?             @db.VarChar(120) // 템플릿 제목
+  content         String              @db.Text // 템플릿 본문
+  button1Json     Json? // 템플릿 버튼1 정보(JSON)
+  button2Json     Json? // 템플릿 버튼2 정보(JSON)
+  category        String?             @db.VarChar(80) // 템플릿 분류
+  status          KakaoTemplateStatus @default(DRAFT) // 템플릿 상태
+  rejectionReason String?             @db.VarChar(255) // 반려 사유
+
+  profile   KakaoProfile          @relation(fields: [profileId], references: [id], onDelete: Restrict) // 발신프로필 참조
+  profileId Int // 발신프로필 ID
+  clients   ClientKakaoTemplate[] // 클라이언트별 템플릿 매핑 목록
+
+  @@index([profileId, status]) // 발신프로필별 상태 조회
+  @@index([status, updatedAt]) // 상태별 최근 변경 조회
+}
+
+// 클라이언트별 카카오 템플릿 사용 매핑 테이블
+model ClientKakaoTemplate {
+  id        Int      @id @default(autoincrement()) // 내부 식별자
+  createdAt DateTime @default(now()) // 레코드 생성 시각
+  updatedAt DateTime @updatedAt // 레코드 수정 시각
+  // isEnabled           Boolean            @default(true) // 클라이언트 사용 가능 여부
+  // alias               String?            @db.VarChar(120) // 클라이언트 내부 별칭
+  // fallbackEnabled     Boolean            @default(false) // 알림톡 실패시 대체발송 여부
+  // fallbackMessageType KakaoFallbackType? // 대체 발송 메시지 타입
+
+  client     Client        @relation(fields: [clientId], references: [id], onDelete: Cascade) // 클라이언트 참조
+  clientId   Int // 클라이언트 ID
+  template   KakaoTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade) // 카카오 템플릿 참조
+  templateId Int // 카카오 템플릿 ID
+  // @@unique([clientId, alias]) // 클라이언트별 별칭 중복 방지
+  // @@index([clientId, isEnabled]) // 클라이언트 사용 가능 템플릿 조회
+  // @@index([templateId, isEnabled]) // 템플릿별 사용 클라이언트 조회
+
+  @@unique([clientId, templateId]) // 동일 클라이언트-템플릿 중복 방지
 }
 
 // prcompany로 호출 및 재시도 기록
@@ -166,6 +230,27 @@ model ApiRequestLog {
 enum ClientStatus {
   ACTIVE // 사용 가능 상태
   INACTIVE // 사용 중지 상태
+}
+
+// 카카오 발신프로필 상태 코드
+enum KakaoProfileStatus {
+  ACTIVE // 사용 가능 상태
+  INACTIVE // 사용 중지 상태
+}
+
+// 카카오 템플릿 상태 코드
+enum KakaoTemplateStatus {
+  DRAFT // 내부 작성 상태
+  PENDING // 심사 대기 상태
+  APPROVED // 승인 완료 상태
+  REJECTED // 반려 상태
+  ARCHIVED // 보관 상태
+}
+
+// 카카오 실패시 대체 발송 타입
+enum KakaoFallbackType {
+  SMS // 단문 문자
+  LMS // 장문 문자
 }
 
 // 지원 메시지 유형
