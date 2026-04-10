@@ -60,7 +60,7 @@ else
 fi
 
 log "Running Prisma migration"
-docker compose -f "$COMPOSE_FILE" run --rm "$SERVICE_NAME" npm run prisma:deploy
+docker compose --env-file "$APP_DIR/.env" -f "$COMPOSE_FILE" run --rm "$SERVICE_NAME" npm run prisma:deploy
 
 log "Starting service"
 docker compose -f "$COMPOSE_FILE" up -d "$SERVICE_NAME"
@@ -70,3 +70,12 @@ docker compose -f "$COMPOSE_FILE" ps
 
 log "Recent application logs"
 docker compose -f "$COMPOSE_FILE" logs --tail=100 "$SERVICE_NAME"
+
+
+echo "🎉 모든 작업 완료"
+# --- 여기부터 SSH 세션 유지 옵션 ---
+# SSH 접속으로 이 스크립트를 실행했을 때 자동 종료되는 게 싫다면,
+# 아래 줄이 SSH 세션을 로그인 셸로 전환해 줍니다.
+if [[ -n "${SSH_TTY:-}" || -n "${SSH_CONNECTION:-}" ]]; then
+  exec bash -l
+fi
