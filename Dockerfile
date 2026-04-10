@@ -21,7 +21,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
-RUN npm ci && npm run prisma:generate && npm cache clean --force
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 5100
