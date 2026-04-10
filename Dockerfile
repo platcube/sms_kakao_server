@@ -4,6 +4,7 @@ WORKDIR /app
 FROM base AS deps
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
+COPY prisma.config.ts ./
 RUN npm ci
 RUN npm run prisma:generate
 
@@ -19,6 +20,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
+COPY prisma.config.ts ./
 RUN npm ci && npm run prisma:generate && npm cache clean --force
 COPY --from=builder /app/dist ./dist
 
