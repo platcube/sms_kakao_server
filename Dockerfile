@@ -3,14 +3,14 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
 RUN npm ci
+RUN npm run prisma:generate
 
 FROM deps AS builder
 COPY tsconfig.json ./
-COPY prisma ./prisma
 COPY src ./src
-RUN npm run prisma:deploy
-RUN rm -rf build && npm run build
+RUN npm run build
 
 FROM base AS runner
 ENV NODE_ENV=production
@@ -18,11 +18,10 @@ ENV TS_NODE_BASEURL=./dist
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci && npm cache clean --force
-
 COPY prisma ./prisma
+RUN npm ci && npm run prisma:generate && npm cache clean --force
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 5100
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node -r tsconfig-paths/register -r dotenv/config dist/server.js"]
+CMD ["node", "-r", "tsconfig-paths/register", "-r", "dotenv/config", "dist/server.js"]
