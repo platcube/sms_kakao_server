@@ -11,11 +11,13 @@ import { prisma } from "@/libs/prisma/client";
 
 const DEFAULT_MAX_RETRY = 3;
 
+// prcompany 예약 발송 응답코드 중 재시도하면 안 되는 코드 목록을 제외하고 판정합니다.
 const isRetryableKakaoReservedCode = (code: number) => {
   const nonRetryableCodes = new Set([-2, -4, -5, -6, -7, -8, -9, -10, -11]);
   return !nonRetryableCodes.has(code);
 };
 
+// 몇 번째 재시도인지에 따라 다음 재시도 대기 시간을 계산합니다.
 const getRetryDelayMs = (attemptNo: number) => {
   const baseByAttempt: Record<number, number> = {
     1: 30_000,
@@ -28,11 +30,13 @@ const getRetryDelayMs = (attemptNo: number) => {
   return base + jitter;
 };
 
+// TempBtn1은 string 또는 object로 들어올 수 있어서, 공급자 요청 전에 string으로 맞춥니다.
 const normalizeTempBtn1 = (value: ScheduleKakaoBodyDto["tempBtn1"]) => {
   if (value === undefined) return undefined;
   return typeof value === "string" ? value : JSON.stringify(value);
 };
 
+// ProviderDispatch.requestPayloadJson에 저장할 공급자 요청 원문 형태를 만듭니다.
 const buildProviderPayload = (input: ScheduleKakaoBodyDto) => ({
   Callback: input.senderKey,
   Phones: input.recipientPhone,
@@ -49,6 +53,7 @@ const buildProviderPayload = (input: ScheduleKakaoBodyDto) => ({
   ...(input.ketc2 ? { Ketc2: input.ketc2 } : {}),
 });
 
+// 서비스 내부 처리 결과를 외부 응답 DTO 형태로 맞춥니다.
 const toResponseDto = (args: {
   messageId: number;
   status: string;
@@ -65,6 +70,14 @@ const toResponseDto = (args: {
   ...(args.reason !== undefined ? { reason: args.reason } : {}),
 });
 
+/**
+ * 카카오 알림톡 예약 발송 메인 서비스
+ * 1. clientCode로 클라이언트 확인
+ * 2. idempotencyKey 중복 여부 확인
+ * 3. Message / ProviderDispatch / MessageEvent 생성
+ * 4. prcompany 예약 발송 API 호출
+ * 5. 공급자 응답 또는 네트워크 오류에 따라 상태를 갱신
+ */
 export const scheduleKakaoMessage = async (input: ScheduleKakaoBodyDto): Promise<ScheduleKakaoResponseDto> => {
   const client = await prisma.client.findFirst({
     where: {
@@ -234,6 +247,13 @@ export const scheduleKakaoMessage = async (input: ScheduleKakaoBodyDto): Promise
   }
 };
 
+/**
+ * 공급자 예약 발송 응답(ResCd/ResMsg)을 해석해서
+ * ProviderDispatch, Message, MessageEvent를 최종 상태로 맞춥니다.
+ * - 성공: ACCEPTED
+ * - 재시도 가능 실패: PENDING + nextRetryAt
+ * - 재시도 불가 실패: FAILED
+ */
 const handleProviderResponse = async (args: {
   messageId: number;
   dispatchId: number;

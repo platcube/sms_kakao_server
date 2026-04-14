@@ -1,4 +1,8 @@
-import { getPrcompanyAuthToken, getPrcompanyBaseUrl, prcompanyClient } from "@/libs/integrations/prcompany/prcompany.client";
+import {
+  getPrcompanyAuthToken,
+  getPrcompanyBaseUrl,
+  prcompanyClient,
+} from "@/libs/integrations/prcompany/prcompany.client";
 
 export type PrcompanyKakaoSendResponse = {
   Count: number;

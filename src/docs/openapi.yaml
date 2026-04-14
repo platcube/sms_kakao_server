@@ -9,6 +9,8 @@ servers:
 tags:
   - name: System Client
     description: 시스템 운영용 클라이언트 관리 API
+  - name: Client Auth
+    description: 외주업체 사용자 인증 API
   - name: Client Messages
     description: 외주사 메시지 발송 API
 components:
