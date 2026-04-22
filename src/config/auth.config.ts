@@ -24,7 +24,7 @@ const requireEnvNumber = (name: string): number => {
 export const authConfig = {
   clientAccessTokenSecret: requireEnv("CLIENT_ACCESS_TOKEN_SECRET"),
   clientRefreshTokenSecret: requireEnv("CLIENT_REFRESH_TOKEN_SECRET"),
-  clientAccessTokenExpiresInMs: requireEnvNumber("CLIENT_ACCESS_TOKEN_EXPIRES_IN_MS"),
-  clientRefreshTokenExpiresInMs: requireEnvNumber("CLIENT_REFRESH_TOKEN_EXPIRES_IN_MS"),
+  clientAccessTokenExpiresInMs: requireEnvNumber("CLIENT_ACCESS_TOKEN_EXPIRES_IN"),
+  clientRefreshTokenExpiresInMs: requireEnvNumber("CLIENT_REFRESH_TOKEN_EXPIRES_IN"),
   clientRefreshTokenCookieName: process.env.CLIENT_REFRESH_TOKEN_COOKIE_NAME ?? "client_refresh_token",
 } as const;

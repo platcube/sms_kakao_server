@@ -1,0 +1,40 @@
+/api/v1/client/auth/user-logout:
+  post:
+    tags:
+      - Client Auth
+    summary: 외주업체 사용자 로그아웃
+    description: |
+      HttpOnly 쿠키의 refresh token을 기준으로 서버 세션을 폐기하고 쿠키를 제거합니다.
+      refresh token 쿠키가 없거나 이미 폐기된 경우에도 로그아웃 응답은 성공으로 반환합니다.
+    responses:
+      "200":
+        description: 로그아웃 성공
+        headers:
+          Set-Cookie:
+            description: refresh token 쿠키 제거
+            schema:
+              type: string
+              example: client_refresh_token=; Path=/api/v1/client/auth; HttpOnly; Expires=Thu, 01 Jan 1970 00:00:00 GMT
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - success
+                - data
+                - error
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  required:
+                    - loggedOut
+                  properties:
+                    loggedOut:
+                      type: boolean
+                      example: true
+                error:
+                  nullable: true
+                  example: null
