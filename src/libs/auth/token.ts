@@ -16,6 +16,7 @@ type TokenType = typeof ACCESS_TOKEN | typeof REFRESH_TOKEN;
 
 type SignedTokenPayload = ClientTokenPayload & {
   type: TokenType;
+  jti: string;
   iat: number;
   exp: number;
 };
@@ -104,6 +105,8 @@ const buildSignedToken = (params: {
     {
       ...params.payload,
       type: params.type,
+      // 같은 사용자/같은 초에 토큰을 재발급해도 토큰 문자열이 중복되지 않도록 고유 ID를 포함합니다.
+      jti: crypto.randomUUID(),
       iat: now,
       exp: expiresAt,
     },

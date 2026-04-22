@@ -8,6 +8,7 @@ import {
 } from "@/api/v1/client/auth/user-signup/dto/user-signup.dto";
 import { AppError } from "@/libs/error/app-error";
 import { ERROR_CODES } from "@/libs/error/error-codes";
+import { encryptApiKey } from "@/libs/auth/apiKeyCrypto";
 import { makePasswordHash } from "@/libs/auth/password";
 import { prisma } from "@/libs/prisma/client";
 
@@ -38,6 +39,7 @@ export const signupClientUser = async (_input: ClientUserSignupBodyDto): Promise
 
   const apiKey = generateApiKey();
   const apiKeyHash = sha256Hex(apiKey);
+  const apiKeyEncrypted = encryptApiKey(apiKey);
   const { salt, password } = makePasswordHash(_input.password);
 
   try {
@@ -48,6 +50,7 @@ export const signupClientUser = async (_input: ClientUserSignupBodyDto): Promise
           name: _input.clientName,
           senderPhone: _input.senderPhone,
           apiKeyHash,
+          apiKeyEncrypted,
         },
       });
 

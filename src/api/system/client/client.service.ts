@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 
 import { ClientCreateBodyDto, ClientCreateResponseDto } from "@/api/system/client/dto/client.dto";
+import { encryptApiKey } from "@/libs/auth/apiKeyCrypto";
 import { AppError } from "@/libs/error/app-error";
 import { ERROR_CODES } from "@/libs/error/error-codes";
 import { prisma } from "@/libs/prisma/client";
@@ -24,6 +25,7 @@ export const createClient = async (input: ClientCreateBodyDto): Promise<ClientCr
 
   // 2) 인증 비교용 해시 생성 (클라이언트 요청 시 raw -> sha256 후 비교)
   const apiKeyHash = sha256Hex(apiKey);
+  const apiKeyEncrypted = encryptApiKey(apiKey);
 
   try {
     const created = await prisma.client.create({
@@ -33,6 +35,7 @@ export const createClient = async (input: ClientCreateBodyDto): Promise<ClientCr
         senderPhone: input.senderPhone,
         status: input.status ?? "ACTIVE",
         apiKeyHash,
+        apiKeyEncrypted,
       },
     });
 

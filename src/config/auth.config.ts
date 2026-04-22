@@ -27,4 +27,5 @@ export const authConfig = {
   clientAccessTokenExpiresInMs: requireEnvNumber("CLIENT_ACCESS_TOKEN_EXPIRES_IN"),
   clientRefreshTokenExpiresInMs: requireEnvNumber("CLIENT_REFRESH_TOKEN_EXPIRES_IN"),
   clientRefreshTokenCookieName: process.env.CLIENT_REFRESH_TOKEN_COOKIE_NAME ?? "client_refresh_token",
+  apiKeyEncryptionSecret: requireEnv("API_KEY_ENCRYPTION_SECRET"),
 } as const;
