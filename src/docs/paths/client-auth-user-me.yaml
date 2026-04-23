@@ -87,30 +87,10 @@
                           type: string
                           example: "15998898"
                         apiKey:
-                          type: object
-                          required:
-                            - issued
-                            - canViewPlainText
-                            - value
-                            - message
-                          properties:
-                            issued:
-                              type: boolean
-                              description: API Key 발급 여부
-                              example: true
-                            canViewPlainText:
-                              type: boolean
-                              description: API Key 원문 조회 가능 여부
-                              example: true
-                            value:
-                              type: string
-                              nullable: true
-                              description: API Key 원문. 암호화 저장값이 없는 기존 클라이언트는 null
-                              example: pc_f81d7154078910c3dbdc18d5db20e2ba69d4f6eb0d64907c765f62098c035197
-                            message:
-                              type: string
-                              description: API Key 조회 관련 안내
-                              example: API Key 원문 조회가 가능합니다.
+                          type: string
+                          nullable: true
+                          description: API Key 원문. 암호화 저장값이 없는 기존 클라이언트는 null
+                          example: pc_f81d7154078910c3dbdc18d5db20e2ba69d4f6eb0d64907c765f62098c035197
                 error:
                   nullable: true
                   example: null

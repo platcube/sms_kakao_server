@@ -18,11 +18,6 @@ export type ClientUserMeResponseDto = {
     name: string;
     status: "ACTIVE" | "INACTIVE";
     senderPhone: string;
-    apiKey: {
-      issued: boolean;
-      canViewPlainText: boolean;
-      value: string | null;
-      message: string;
-    };
+    apiKey: string | null;
   };
 };

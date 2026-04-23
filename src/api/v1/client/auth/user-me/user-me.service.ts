@@ -34,14 +34,7 @@ export const getClientUserMe = async (authUser: ClientUserMeAuthDto): Promise<Cl
       name: clientUser.client.name,
       status: clientUser.client.status,
       senderPhone: clientUser.client.senderPhone,
-      apiKey: {
-        issued: clientUser.client.apiKeyHash.trim().length > 0,
-        canViewPlainText: apiKey !== null,
-        value: apiKey,
-        message: apiKey
-          ? "API Key 원문 조회가 가능합니다."
-          : "이전에 발급된 API Key는 암호화 저장값이 없어 원문 조회가 불가능합니다. 필요 시 재발급이 필요합니다.",
-      },
+      apiKey,
     },
   };
 };
