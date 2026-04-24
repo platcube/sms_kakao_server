@@ -13,6 +13,7 @@ export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessa
   const issues: { field: string; reason: string }[] = [];
 
   const clientCode = source.clientCode;
+  const apiKey = source.apiKey;
   const messageType = source.messageType;
   const recipientPhone = source.recipientPhone;
   const phones = source.phones;
@@ -29,6 +30,7 @@ export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessa
     : null;
 
   if (!isNonEmptyString(clientCode)) issues.push({ field: "clientCode", reason: "clientCode is required" });
+  if (!isNonEmptyString(apiKey)) issues.push({ field: "apiKey", reason: "apiKey is required" });
   if (!isNonEmptyString(messageType) || !MESSAGE_TYPES.has(messageType as SendMessageBodyDto["messageType"])) {
     issues.push({ field: "messageType", reason: "messageType must be 'SMS' or 'LMS'" });
   }
@@ -83,6 +85,7 @@ export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessa
     success: true,
     data: {
       clientCode: String(clientCode).trim(),
+      apiKey: String(apiKey).trim(),
       messageType: messageType as "SMS" | "LMS",
       recipientPhone: normalizedPhones as string[],
       senderKey: String(senderKey).trim(),

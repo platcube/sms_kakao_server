@@ -1,6 +1,7 @@
 // 플랫큐브 SMS/LMS 예약 발송 요청 DTO
 export type ScheduleMessageBodyDto = {
   clientCode: string; // 외주사 식별 코드
+  apiKey: string; // client API Key
   messageType: "SMS" | "LMS"; // 예약 발송 지원 타입
   recipientPhone: string[]; // 수신자 전화번호 목록(최소 1건)
   senderKey: string; // 발신번호(문서상 Callback)

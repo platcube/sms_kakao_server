@@ -1,8 +1,9 @@
 export type ScheduleKakaoBodyDto = {
   clientCode: string;
+  apiKey: string;
   messageType: "ALIMTALK";
-  recipientPhone: string;
-  senderKey: string;
+  recipientPhone: string[];
+  senderPhone: string;
   message: string;
   title?: string;
   profileKey: string;

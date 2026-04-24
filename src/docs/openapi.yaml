@@ -13,6 +13,8 @@ tags:
     description: 외주업체 사용자 인증 API
   - name: Client Messages
     description: 외주사 메시지 발송 API
+  - name: Client Kakao
+    description: 외주사 카카오 알림톡 발송 API
 components:
   securitySchemes:
     bearerAuth:

@@ -27,7 +27,7 @@ export type PrcompanyKakaoItemsResponse = {
 
 export type PrcompanyKakaoImmediateRequest = {
   callback: string;
-  phones: string;
+  phones: string[];
   title?: string;
   message: string;
   profileKey: string;

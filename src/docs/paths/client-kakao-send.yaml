@@ -1,0 +1,206 @@
+paths:
+  /api/v1/client/kakao/send:
+    post:
+      tags:
+        - Client Kakao
+      summary: 카카오 알림톡 즉시 발송 요청
+      description: |
+        외주사 클라이언트가 플랫큐브를 통해 카카오 알림톡 즉시 발송을 요청합니다.
+        `Authorization`에는 user-login으로 발급받은 accessToken을 `Bearer` 형식으로 전달합니다.
+        `apiKey`는 요청 body에 포함하며, 로그인한 사용자와 같은 client의 API Key인지 추가 검증합니다.
+        발송 전 `clientCode`, `profileKey`, `tempCode`가 시스템에 등록된 활성 템플릿 매핑인지 확인합니다.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - clientCode
+                - apiKey
+                - messageType
+                - recipientPhone
+                - senderPhone
+                - message
+                - profileKey
+                - tempCode
+                - smsGubn
+              properties:
+                clientCode:
+                  type: string
+                  description: 외주사 식별 코드
+                  example: yglee_a
+                apiKey:
+                  type: string
+                  description: client API Key
+                  example: pc_f81d7154078910c3dbdc18d5db20e2ba69d4f6eb0d64907c765f62098c035197
+                messageType:
+                  type: string
+                  enum:
+                    - ALIMTALK
+                  description: 메시지 타입
+                  example: ALIMTALK
+                recipientPhone:
+                  type: array
+                  description: 수신자 전화번호 배열(숫자만, 1건 이상)
+                  items:
+                    type: string
+                    example: "01012345678"
+                  example:
+                    - "01012345678"
+                senderPhone:
+                  type: string
+                  description: 발신번호(prcompany Callback). client에 등록된 senderPhone과 일치해야 합니다.
+                  example: "15998898"
+                title:
+                  type: string
+                  description: 알림톡 제목(선택, 20바이트 이하)
+                  example: 주문 취소 안내
+                message:
+                  type: string
+                  description: 템플릿 변수를 실제 값으로 치환한 최종 알림톡 본문(1000자 이하)
+                  example: "[락앤런 트레일러닝]\n주문 취소가 완료되었습니다.\n\n홍길동님,\n요청하신 주문이 정상적으로 취소되었습니다.\n\n• 주문상품 : 락앤런 참가권\n• 환불금액 : 30000원\n• 취소일시 : 2026-04-23 15:30\n• 주문번호 : ORDER-20260423-001\n\n환불은 카드사/결제사 사정에 따라\n영업일 기준 3~7일 내 처리될 수 있습니다.\n\n이용해주셔서 감사합니다."
+                profileKey:
+                  type: string
+                  description: 시스템에 등록된 활성 카카오 발신프로필 키
+                  example: 0b247bcf1617351cf6712b3457a0e91446ba53
+                tempCode:
+                  type: string
+                  description: 시스템에 등록된 승인 템플릿 코드
+                  example: SH-002
+                tempBtn1:
+                  oneOf:
+                    - type: string
+                    - type: object
+                      additionalProperties: true
+                  description: prcompany TempBtn1로 전달할 버튼 JSON 또는 문자열
+                  example:
+                    name: 채널 추가
+                    type: 채널 추가
+                failFlag:
+                  type: integer
+                  description: prcompany FailFlag. 기본값 0
+                  example: 0
+                smsGubn:
+                  type: string
+                  enum:
+                    - Y
+                    - N
+                  description: 실패 시 일반문자 대체발송 여부
+                  example: N
+                ketc1:
+                  type: string
+                  description: prcompany 기타1 필드(선택, 160바이트 이하)
+                  example: ORDER-20260423-001
+                ketc2:
+                  type: string
+                  description: prcompany 기타2 필드(선택, 160바이트 이하)
+                  example: yglee_a
+                idempotencyKey:
+                  type: string
+                  description: 중복 요청 방지 키
+                  example: kakao-cancel-ORDER-20260423-001
+            example:
+              clientCode: yglee_a
+              apiKey: pc_f81d7154078910c3dbdc18d5db20e2ba69d4f6eb0d64907c765f62098c035197
+              messageType: ALIMTALK
+              recipientPhone:
+                - "01012345678"
+              senderPhone: "15998898"
+              title: 주문 취소 안내
+              message: "[락앤런 트레일러닝]\n주문 취소가 완료되었습니다.\n\n홍길동님,\n요청하신 주문이 정상적으로 취소되었습니다.\n\n• 주문상품 : 락앤런 참가권\n• 환불금액 : 30000원\n• 취소일시 : 2026-04-23 15:30\n• 주문번호 : ORDER-20260423-001\n\n환불은 카드사/결제사 사정에 따라\n영업일 기준 3~7일 내 처리될 수 있습니다.\n\n이용해주셔서 감사합니다."
+              profileKey: 0b247bcf1617351cf6712b3457a0e91446ba53
+              tempCode: SH-002
+              tempBtn1:
+                name: 채널 추가
+                type: 채널 추가
+              failFlag: 0
+              smsGubn: N
+              ketc1: ORDER-20260423-001
+              ketc2: yglee_a
+              idempotencyKey: kakao-cancel-ORDER-20260423-001
+      responses:
+        "200":
+          description: 발송 요청 처리 성공(접수 성공/재시도 예정/최종 실패 포함)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - error
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - messageId
+                      - messageType
+                      - status
+                      - requestedAt
+                    properties:
+                      messageId:
+                        type: integer
+                        example: 123
+                      messageType:
+                        type: string
+                        enum:
+                          - ALIMTALK
+                        example: ALIMTALK
+                      status:
+                        type: string
+                        example: ACCEPTED
+                      requestedAt:
+                        type: string
+                        format: date-time
+                        example: "2026-04-23T06:30:00.000Z"
+                      reason:
+                        type: object
+                        nullable: true
+                        properties:
+                          code:
+                            type: string
+                            example: MESSAGE_RETRY_SCHEDULED
+                          message:
+                            type: string
+                            example: 공급자 일시 오류로 재시도가 예약되었습니다.
+                  error:
+                    nullable: true
+                    example: null
+              examples:
+                accepted:
+                  summary: 공급자 접수 성공
+                  value:
+                    success: true
+                    data:
+                      messageId: 123
+                      messageType: ALIMTALK
+                      status: ACCEPTED
+                      requestedAt: "2026-04-23T06:30:00.000Z"
+                      reason: null
+                    error: null
+                retryScheduled:
+                  summary: 재시도 예정
+                  value:
+                    success: true
+                    data:
+                      messageId: 124
+                      messageType: ALIMTALK
+                      status: PENDING
+                      requestedAt: "2026-04-23T06:31:00.000Z"
+                      reason:
+                        code: MESSAGE_RETRY_SCHEDULED
+                        message: 공급자 일시 오류로 재시도가 예약되었습니다.
+                    error: null
+        "400":
+          description: 요청 검증 실패 또는 등록되지 않은 카카오 템플릿 매핑
+        "401":
+          description: 인증 실패(accessToken 또는 body.apiKey/clientCode 오류)
+        "404":
+          description: 클라이언트 없음

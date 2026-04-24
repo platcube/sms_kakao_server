@@ -98,14 +98,14 @@ export const registerKakaoTemplates = async (
 
       await tx.clientKakaoTemplate.upsert({
         where: {
-          clientId_templateId: {
+          clientId_kakaoTemplateId: {
             clientId: client.id,
-            templateId: template.id,
+            kakaoTemplateId: template.id,
           },
         },
         create: {
           clientId: client.id,
-          templateId: template.id,
+          kakaoTemplateId: template.id,
         },
         update: {},
       });

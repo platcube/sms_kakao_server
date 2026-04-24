@@ -80,9 +80,9 @@ model KakaoProfile {
   channelName String?            @db.VarChar(120) // 카카오 채널명
   status      KakaoProfileStatus @default(ACTIVE) // 발신프로필 사용 상태
 
-  templates KakaoTemplate[] // 발신프로필에 속한 템플릿 목록
-  client    Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  clientId  Int
+  kakaoTemplates KakaoTemplate[] // 발신프로필에 속한 템플릿 목록
+  client         Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  clientId       Int
 
   @@index([status]) // 상태 기준 조회 인덱스
   @@index([clientId, status]) // 클라이언트별 프로필 조회 인덱스
@@ -121,12 +121,12 @@ model ClientKakaoTemplate {
   // fallbackEnabled     Boolean            @default(false) // 알림톡 실패시 대체발송 여부
   // fallbackMessageType KakaoFallbackType? // 대체 발송 메시지 타입
 
-  client     Client        @relation(fields: [clientId], references: [id], onDelete: Cascade) // 클라이언트 참조
-  clientId   Int // 클라이언트 ID
-  template   KakaoTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade) // 카카오 템플릿 참조
-  templateId Int // 카카오 템플릿 ID
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade) // 클라이언트 참조
+  clientId        Int // 클라이언트 ID
+  kakaoTemplate   KakaoTemplate @relation(fields: [kakaoTemplateId], references: [id], onDelete: Cascade) // 카카오 템플릿 참조
+  kakaoTemplateId Int // 카카오 템플릿 ID
 
-  @@unique([clientId, templateId]) // 동일 클라이언트-템플릿 중복 방지
+  @@unique([clientId, kakaoTemplateId]) // 동일 클라이언트-템플릿 중복 방지
 }
 
 // 외주업체(Client) 소속 로그인 사용자 계정 테이블

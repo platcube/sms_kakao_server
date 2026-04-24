@@ -38,7 +38,7 @@ const normalizeTempBtn1 = (value: ScheduleKakaoBodyDto["tempBtn1"]) => {
 
 // ProviderDispatch.requestPayloadJson에 저장할 공급자 요청 원문 형태를 만듭니다.
 const buildProviderPayload = (input: ScheduleKakaoBodyDto) => ({
-  Callback: input.senderKey,
+  Callback: input.senderPhone,
   Phones: input.recipientPhone,
   ...(input.title ? { Title: input.title } : {}),
   Message: input.message,
@@ -87,8 +87,14 @@ export const scheduleKakaoMessage = async (input: ScheduleKakaoBodyDto): Promise
   });
 
   if (!client) {
-    throw new AppError(404, ERROR_CODES.COMMON_404_NOT_FOUND, "Client not found");
+    throw new AppError(404, ERROR_CODES.COMMON_404_NOT_FOUND, "클라이언트를 찾을 수 없습니다.");
   }
+
+  if (input.senderPhone !== client.senderPhone) {
+    throw new AppError(400, ERROR_CODES.COMMON_400_VALIDATION, "클라이언트에 등록된 발신번호가 아닙니다.");
+  }
+
+  const recipientPhones = input.recipientPhone.join(",");
 
   if (input.idempotencyKey) {
     const existingMessage = await prisma.message.findFirst({
@@ -123,8 +129,8 @@ export const scheduleKakaoMessage = async (input: ScheduleKakaoBodyDto): Promise
         messageType: "ALIMTALK",
         sendType: "SCHEDULED",
         status: "SCHEDULED",
-        recipientPhone: input.recipientPhone,
-        senderKey: input.senderKey,
+        recipientPhone: recipientPhones,
+        senderKey: input.senderPhone,
         subject: input.title ?? null,
         content: input.message,
         templateCode: input.tempCode,
@@ -173,7 +179,7 @@ export const scheduleKakaoMessage = async (input: ScheduleKakaoBodyDto): Promise
 
   try {
     const providerResponse = await sendPrcompanyKakaoReserved({
-      callback: input.senderKey,
+      callback: input.senderPhone,
       phones: input.recipientPhone,
       title: input.title,
       message: input.message,
