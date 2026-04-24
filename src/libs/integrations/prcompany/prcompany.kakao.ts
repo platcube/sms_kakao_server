@@ -1,4 +1,8 @@
-import { getPrcompanyAuthToken, getPrcompanyBaseUrl, prcompanyClient } from "@/libs/integrations/prcompany/prcompany.client";
+import {
+  getPrcompanyAuthToken,
+  getPrcompanyBaseUrl,
+  prcompanyClient,
+} from "@/libs/integrations/prcompany/prcompany.client";
 
 export type PrcompanyKakaoSendResponse = {
   Count: number;
@@ -23,7 +27,7 @@ export type PrcompanyKakaoItemsResponse = {
 
 export type PrcompanyKakaoImmediateRequest = {
   callback: string;
-  phones: string;
+  phones: string[];
   title?: string;
   message: string;
   profileKey: string;

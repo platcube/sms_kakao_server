@@ -1,0 +1,92 @@
+paths:
+  /api/v1/client/kakao/templates/{templateCode}:
+    get:
+      tags:
+        - Client Kakao
+      summary: 카카오 템플릿 상세 조회
+      description: |
+        현재 로그인한 외주사 사용자의 client에 매핑된 카카오 템플릿 상세 정보를 조회합니다.
+        prcompany가 아니라 우리 DB 기준으로 조회합니다.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: templateCode
+          required: true
+          schema:
+            type: string
+          description: 조회할 템플릿 코드
+          example: SH-001
+      responses:
+        "200":
+          description: 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - error
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      templateCode:
+                        type: string
+                        example: SH-001
+                      name:
+                        type: string
+                        example: (쇼핑몰)결제완료
+                      content:
+                        type: string
+                        example: "[락앤런 트레일러닝]\n주문이 정상적으로 완료되었습니다."
+                      status:
+                        type: string
+                        example: APPROVED
+                      category:
+                        type: string
+                        nullable: true
+                        example: 서비스이용/이용안내/공지
+                      rejectionReason:
+                        type: string
+                        nullable: true
+                        example: null
+                      profile:
+                        type: object
+                        properties:
+                          profileKey:
+                            type: string
+                            example: 0b247bccf1617351cf6712b3457a0e91446ba53
+                          name:
+                            type: string
+                            example: 주식회사 플랫큐브
+                          channelName:
+                            type: string
+                            nullable: true
+                            example: 플랫큐브
+                          status:
+                            type: string
+                            example: ACTIVE
+                      button1Json:
+                        nullable: true
+                        example:
+                          name: 채널 추가
+                          type: 채널 추가
+                      button2Json:
+                        nullable: true
+                        example: null
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        example: "2026-04-24T02:00:00.000Z"
+                  error:
+                    nullable: true
+                    example: null
+        "401":
+          description: accessToken 검증 실패
+        "404":
+          description: 템플릿을 찾을 수 없음

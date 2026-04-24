@@ -25,6 +25,7 @@ export const parseScheduleMessageBody = (input: unknown): ValidationResult<Sched
   const issues: { field: string; reason: string }[] = [];
 
   const clientCode = source.clientCode;
+  const apiKey = source.apiKey;
   const messageType = source.messageType;
   const recipientPhone = source.recipientPhone;
   const senderKey = source.senderKey;
@@ -40,6 +41,7 @@ export const parseScheduleMessageBody = (input: unknown): ValidationResult<Sched
     : null;
 
   if (!isNonEmptyString(clientCode)) issues.push({ field: "clientCode", reason: "clientCode is required" });
+  if (!isNonEmptyString(apiKey)) issues.push({ field: "apiKey", reason: "apiKey is required" });
   if (!isSupportedMessageType(messageType)) issues.push({ field: "messageType", reason: "messageType must be 'SMS' or 'LMS'" });
 
   if (!Array.isArray(normalizedPhones) || normalizedPhones.length === 0) {
@@ -106,6 +108,7 @@ export const parseScheduleMessageBody = (input: unknown): ValidationResult<Sched
     success: true,
     data: {
       clientCode: String(clientCode).trim(),
+      apiKey: String(apiKey).trim(),
       messageType: messageType as "SMS" | "LMS",
       recipientPhone: normalizedPhones as string[],
       senderKey: String(senderKey).trim(),

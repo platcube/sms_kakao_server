@@ -14,14 +14,15 @@ model HealthLog {
 
 // 외주사(테넌트/클라이언트) 정보 테이블
 model Client {
-  id          Int          @id @default(autoincrement()) // 내부 클라이언트 식별자
-  createdAt   DateTime     @default(now()) // 레코드 생성 시각
-  updatedAt   DateTime     @updatedAt // 레코드 수정 시각
-  clientCode  String       @unique @db.VarChar(50) // 클라이언트 유니크 코드
-  name        String       @db.VarChar(120) // 클라이언트 이름
-  status      ClientStatus @default(ACTIVE) // 클라이언트 이용 상태
-  apiKeyHash  String       @db.VarChar(255) // API 키 해시값 - sha256으로 단방향
-  senderPhone String       @db.VarChar(80) // 발신 번호 
+  id              Int          @id @default(autoincrement()) // 내부 클라이언트 식별자
+  createdAt       DateTime     @default(now()) // 레코드 생성 시각
+  updatedAt       DateTime     @updatedAt // 레코드 수정 시각
+  clientCode      String       @unique @db.VarChar(50) // 클라이언트 유니크 코드
+  name            String       @db.VarChar(120) // 클라이언트 이름
+  status          ClientStatus @default(ACTIVE) // 클라이언트 이용 상태
+  apiKeyHash      String       @db.VarChar(255) // API 키 해시값 - sha256으로 단방향
+  apiKeyEncrypted String       @db.Text // API 키 암호화 저장값 - 조회 화면 표시용
+  senderPhone     String       @db.VarChar(80) // 발신 번호 
   // rateLimitPerSecond Int          @default(20) // 초당 요청 제한값 - 요청 제한 횟수가 있는지?
   // dailyLimit         Int          @default(50000) // 일일 발송 제한값 - 요청 제한 횟수가 있는지?
 
@@ -30,6 +31,7 @@ model Client {
   apiRequestLogs ApiRequestLog[] // 클라이언트 API 호출 로그 목록
   kakaoTemplates ClientKakaoTemplate[] // 클라이언트별 카카오 템플릿 매핑 목록
   kakaoProfiles  KakaoProfile[] // 클라이언트별 발신 프로필 목록
+  clientUser     ClientUser[] // 클라이언트 소속 로그인 사용자 목록
 
   @@index([status]) // 상태 기준 조회 인덱스
 }
@@ -78,9 +80,9 @@ model KakaoProfile {
   channelName String?            @db.VarChar(120) // 카카오 채널명
   status      KakaoProfileStatus @default(ACTIVE) // 발신프로필 사용 상태
 
-  templates KakaoTemplate[] // 발신프로필에 속한 템플릿 목록
-  client    Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  clientId  Int
+  kakaoTemplates KakaoTemplate[] // 발신프로필에 속한 템플릿 목록
+  client         Client          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  clientId       Int
 
   @@index([status]) // 상태 기준 조회 인덱스
   @@index([clientId, status]) // 클라이언트별 프로필 조회 인덱스
@@ -119,15 +121,52 @@ model ClientKakaoTemplate {
   // fallbackEnabled     Boolean            @default(false) // 알림톡 실패시 대체발송 여부
   // fallbackMessageType KakaoFallbackType? // 대체 발송 메시지 타입
 
-  client     Client        @relation(fields: [clientId], references: [id], onDelete: Cascade) // 클라이언트 참조
-  clientId   Int // 클라이언트 ID
-  template   KakaoTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade) // 카카오 템플릿 참조
-  templateId Int // 카카오 템플릿 ID
-  // @@unique([clientId, alias]) // 클라이언트별 별칭 중복 방지
-  // @@index([clientId, isEnabled]) // 클라이언트 사용 가능 템플릿 조회
-  // @@index([templateId, isEnabled]) // 템플릿별 사용 클라이언트 조회
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade) // 클라이언트 참조
+  clientId        Int // 클라이언트 ID
+  kakaoTemplate   KakaoTemplate @relation(fields: [kakaoTemplateId], references: [id], onDelete: Cascade) // 카카오 템플릿 참조
+  kakaoTemplateId Int // 카카오 템플릿 ID
 
-  @@unique([clientId, templateId]) // 동일 클라이언트-템플릿 중복 방지
+  @@unique([clientId, kakaoTemplateId]) // 동일 클라이언트-템플릿 중복 방지
+}
+
+// 외주업체(Client) 소속 로그인 사용자 계정 테이블
+model ClientUser {
+  id          Int              @id @default(autoincrement()) // 내부 식별자
+  createdAt   DateTime         @default(now()) // 레코드 생성 시각
+  updatedAt   DateTime         @updatedAt // 레코드 수정 시각
+  account     String           @unique @db.VarChar(120) // 로그인 ID
+  password    String           @db.VarChar(255) // 비밀번호 - sha256 해시
+  salt        String           @db.VarChar(255) // 비밀번호 솔트값
+  name        String           @db.VarChar(120) // 사용자 이름
+  status      ClientUserStatus @default(ACTIVE) // 사용자 상태
+  lastLoginAt DateTime? // 마지막 로그인 시각
+
+  client        Client               @relation(fields: [clientId], references: [id], onDelete: Cascade) // 소속 클라이언트 참조
+  clientId      Int // 소속 클라이언트 ID
+  refreshTokens ClientRefreshToken[] // 사용자 리프레시 토큰 목록
+
+  @@index([clientId, status]) // 클라이언트별 활성 사용자 조회
+  @@index([account, status]) // 로그인 ID 조회
+}
+
+// 외주업체 로그인 세션 유지용 리프레시 토큰 테이블
+model ClientRefreshToken {
+  id           Int                @id @default(autoincrement()) // 내부 식별자
+  createdAt    DateTime           @default(now()) // 레코드 생성 시각
+  updatedAt    DateTime           @updatedAt // 레코드 수정 시각
+  refreshToken String             @unique @db.VarChar(255) // 리프레시 토큰 해시값
+  expiresAt    DateTime // 만료 시각
+  revokedAt    DateTime? // 폐기 시각
+  replacedById Int? // 교체된 다음 토큰 ID
+  userAgent    String?            @db.VarChar(255) // 로그인 기기/브라우저 정보
+  ipAddress    String?            @db.VarChar(64) // 로그인 요청 IP
+  status       RefreshTokenStatus @default(ACTIVE) // 토큰 상태
+
+  clientUser   ClientUser @relation(fields: [clientUserId], references: [id], onDelete: Cascade) // 소유 사용자 참조
+  clientUserId Int // 소유 사용자 ID
+
+  @@index([clientUserId, status]) // 사용자별 활성 토큰 조회
+  @@index([expiresAt, status]) // 만료 대상 토큰 정리 조회
 }
 
 // prcompany로 호출 및 재시도 기록
@@ -232,6 +271,13 @@ enum ClientStatus {
   INACTIVE // 사용 중지 상태
 }
 
+// 외주업체 로그인 사용자 상태
+enum ClientUserStatus {
+  ACTIVE // 로그인 가능 상태
+  INACTIVE // 사용 중지 상태
+  LOCKED // 잠금 상태
+}
+
 // 카카오 발신프로필 상태 코드
 enum KakaoProfileStatus {
   ACTIVE // 사용 가능 상태
@@ -303,6 +349,13 @@ enum BillingStatus {
   PENDING // 정산 대기
   CONFIRMED // 정산 확정
   ADJUSTED // 정산 조정됨
+}
+
+// 리프레시 토큰 상태
+enum RefreshTokenStatus {
+  ACTIVE // 사용 가능 상태
+  REVOKED // 폐기 상태
+  EXPIRED // 만료 상태
 }
 
 // HTTP 메서드
