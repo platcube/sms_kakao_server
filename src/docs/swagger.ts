@@ -1,18 +1,20 @@
+import fs from "fs";
 import path from "path";
 import type { Express, Request, Response } from "express";
 import swaggerJSDoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 
+const yaml = require("js-yaml") as {
+  load: (source: string) => unknown;
+};
+
+const openapiDefinition = yaml.load(
+  fs.readFileSync(path.join(process.cwd(), "src/docs/openapi.yaml"), "utf8"),
+) as Record<string, unknown>;
+
 const swaggerSpec = swaggerJSDoc({
-  apis: [path.join(process.cwd(), "src/docs/openapi.yaml"), path.join(process.cwd(), "src/docs/paths/**/*.yaml")],
-  definition: {
-    openapi: "3.0.3",
-    info: {
-      title: "sms_kakao_server API",
-      version: "1.0.0",
-      description: "플랫큐브 문자/카카오 발송 API 문서",
-    },
-  },
+  apis: [path.join(process.cwd(), "src/docs/paths/**/*.yaml")],
+  definition: openapiDefinition,
 });
 
 export const setupSwagger = (app: Express) => {
