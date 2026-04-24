@@ -1,3 +1,15 @@
 import { Router } from "express";
 
-export const templateButton1Router = Router();
+import { kakaoTemplateButton1Controller } from "@/api/v1/client/kakao/template-button1/template-button1.controller";
+import { parseKakaoTemplateButton1Query } from "@/api/v1/client/kakao/template-button1/template-button1.schema";
+import { clientUserAuth } from "@/libs/auth/clientUserAuth";
+import { validateQuery } from "@/libs/validation/validate";
+
+export const templateButton1Router = Router({ mergeParams: true });
+
+templateButton1Router.get(
+  "/",
+  validateQuery(parseKakaoTemplateButton1Query),
+  clientUserAuth,
+  kakaoTemplateButton1Controller,
+);

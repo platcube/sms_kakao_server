@@ -1,0 +1,134 @@
+/api/v1/client/auth/user-signup:
+  post:
+    tags:
+      - Client Auth
+    summary: 외주업체 사용자 회원가입
+    description: |
+      외주업체(Client)와 첫 로그인 사용자(ClientUser)를 함께 생성합니다.
+      회원가입이 완료되면 외부 API 연동용 `apiKey`를 1회 응답으로 반환합니다.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - clientCode
+              - clientName
+              - senderPhone
+              - account
+              - password
+              - userName
+            properties:
+              clientCode:
+                type: string
+                description: 외주업체를 식별하는 유니크 코드
+                example: CLIENT_A
+              clientName:
+                type: string
+                description: 외주업체명
+                example: 외주사 A
+              senderPhone:
+                type: string
+                description: 기본 발신번호
+                example: "15998898"
+              account:
+                type: string
+                description: 로그인 계정 ID
+                example: client_a_admin
+              password:
+                type: string
+                description: 로그인 비밀번호
+                example: test1234!
+              userName:
+                type: string
+                description: 사용자 이름
+                example: 홍길동
+          examples:
+            default:
+              value:
+                clientCode: CLIENT_A
+                clientName: 외주사 A
+                senderPhone: "15998898"
+                account: client_a_admin
+                password: test1234!
+                userName: 홍길동
+    responses:
+      "201":
+        description: 회원가입 성공
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - success
+                - data
+                - error
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  required:
+                    - clientId
+                    - clientUserId
+                    - clientCode
+                    - account
+                    - apiKey
+                    - createdAt
+                  properties:
+                    clientId:
+                      type: integer
+                      example: 1
+                    clientUserId:
+                      type: integer
+                      example: 1
+                    clientCode:
+                      type: string
+                      example: CLIENT_A
+                    account:
+                      type: string
+                      example: client_a_admin
+                    apiKey:
+                      type: string
+                      description: 외부 API 연동용 키 원문. 응답 시 1회만 확인 가능
+                      example: pc_f81d7154078910c3dbdc18d5db20e2ba69d4f6eb0d64907c765f62098c035197
+                    createdAt:
+                      type: string
+                      format: date-time
+                      example: 2026-04-14T05:30:00.000Z
+                error:
+                  nullable: true
+                  example: null
+      "400":
+        description: 유효성 검증 실패 또는 중복 데이터
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - success
+                - data
+                - error
+              properties:
+                success:
+                  type: boolean
+                  example: false
+                data:
+                  nullable: true
+                  example: null
+                error:
+                  type: object
+                  required:
+                    - code
+                    - message
+                  properties:
+                    code:
+                      type: string
+                      example: COMMON_400_VALIDATION
+                    message:
+                      type: string
+                      example: clientCode already exists
+                    details:
+                      nullable: true

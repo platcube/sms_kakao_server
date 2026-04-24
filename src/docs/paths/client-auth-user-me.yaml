@@ -1,0 +1,124 @@
+/api/v1/client/auth/user-me:
+  get:
+    tags:
+      - Client Auth
+    summary: 외주업체 사용자 본인 정보 조회
+    description: |
+      accessToken으로 현재 로그인한 외주업체 사용자와 소속 클라이언트 정보를 조회합니다.
+    security:
+      - bearerAuth: []
+    responses:
+      "200":
+        description: 본인 정보 조회 성공
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - success
+                - data
+                - error
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  required:
+                    - user
+                    - client
+                  properties:
+                    user:
+                      type: object
+                      required:
+                        - id
+                        - account
+                        - name
+                        - status
+                        - lastLoginAt
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        account:
+                          type: string
+                          example: client_a_admin
+                        name:
+                          type: string
+                          example: 홍길동
+                        status:
+                          type: string
+                          enum:
+                            - ACTIVE
+                            - INACTIVE
+                            - LOCKED
+                          example: ACTIVE
+                        lastLoginAt:
+                          type: string
+                          nullable: true
+                          format: date-time
+                          example: 2026-04-22T01:20:00.000Z
+                    client:
+                      type: object
+                      required:
+                        - id
+                        - clientCode
+                        - name
+                        - status
+                        - senderPhone
+                        - apiKey
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        clientCode:
+                          type: string
+                          example: CLIENT_A
+                        name:
+                          type: string
+                          example: 외주사 A
+                        status:
+                          type: string
+                          enum:
+                            - ACTIVE
+                            - INACTIVE
+                          example: ACTIVE
+                        senderPhone:
+                          type: string
+                          example: "15998898"
+                        apiKey:
+                          type: string
+                          nullable: true
+                          description: API Key 원문. 암호화 저장값이 없는 기존 클라이언트는 null
+                          example: pc_f81d7154078910c3dbdc18d5db20e2ba69d4f6eb0d64907c765f62098c035197
+                error:
+                  nullable: true
+                  example: null
+      "401":
+        description: accessToken 누락, 만료 또는 검증 실패
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - success
+                - data
+                - error
+              properties:
+                success:
+                  type: boolean
+                  example: false
+                data:
+                  nullable: true
+                  example: null
+                error:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                      example: AUTH_401_UNAUTHORIZED
+                    message:
+                      type: string
+                      example: Invalid user token
+                    details:
+                      nullable: true

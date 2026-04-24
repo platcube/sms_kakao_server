@@ -1,0 +1,203 @@
+paths:
+  /api/v1/system/kakao/templates/register:
+    post:
+      tags:
+        - System Kakao
+      summary: 카카오 알림톡 템플릿 등록
+      description: |
+        시스템 운영자가 클라이언트에 연결할 카카오 발신프로필과 알림톡 템플릿을 등록하거나 갱신합니다.
+        같은 `profileKey`는 같은 클라이언트에만 연결할 수 있고, 같은 `templateCode`는 같은 발신프로필에만 연결할 수 있습니다.
+        현재 시스템 API는 `system/client`와 동일하게 별도 관리자 인증 미들웨어가 붙어 있지 않습니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - clientCode
+                - profile
+                - templates
+              properties:
+                clientCode:
+                  type: string
+                  description: 템플릿을 사용할 외주사 식별 코드
+                  example: CLIENT_A
+                profile:
+                  type: object
+                  required:
+                    - profileKey
+                    - name
+                  properties:
+                    profileKey:
+                      type: string
+                      description: prcompany 발송 시 사용하는 카카오채널 발신프로필 키
+                      example: 338e25bbe39eab8970879f2ba89afadcde575
+                    name:
+                      type: string
+                      description: 내부 관리용 발신프로필 이름
+                      example: 플랫큐브 주문 알림 프로필
+                    channelName:
+                      type: string
+                      description: 카카오 채널명
+                      example: 플랫큐브
+                    status:
+                      type: string
+                      enum:
+                        - ACTIVE
+                        - INACTIVE
+                      default: ACTIVE
+                      description: 발신프로필 사용 상태
+                templates:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  description: 등록 또는 갱신할 템플릿 목록
+                  items:
+                    type: object
+                    required:
+                      - templateCode
+                      - name
+                      - content
+                    properties:
+                      templateCode:
+                        type: string
+                        description: 알림톡 템플릿 코드
+                        example: SH-002
+                      name:
+                        type: string
+                        description: 내부 관리용 템플릿 이름
+                        example: 결제 완료 안내
+                      content:
+                        type: string
+                        description: 승인된 알림톡 템플릿 본문
+                        example: |
+                          #{고객명}님의 결제가 완료되었습니다.
+                          주문번호: #{주문번호}
+                      button1Json:
+                        type: object
+                        nullable: true
+                        additionalProperties: true
+                        description: prcompany TempBtn1로 전달할 버튼 JSON
+                        example:
+                          name: 주문내역 확인
+                          type: WL
+                          url_mobile: https://example.com/orders
+                          url_pc: https://example.com/orders
+                      button2Json:
+                        type: object
+                        nullable: true
+                        additionalProperties: true
+                        description: prcompany에서 두 번째 버튼이 필요할 때 사용할 버튼 JSON
+                        example: null
+                      category:
+                        type: string
+                        description: 내부 분류값
+                        example: ORDER
+                      status:
+                        type: string
+                        enum:
+                          - DRAFT
+                          - PENDING
+                          - APPROVED
+                          - REJECTED
+                          - ARCHIVED
+                        default: APPROVED
+                        description: 템플릿 승인/운영 상태
+                      rejectionReason:
+                        type: string
+                        nullable: true
+                        description: 반려 상태일 때 반려 사유
+                        example: null
+            example:
+              clientCode: CLIENT_A
+              profile:
+                profileKey: 338e25bbe39eab8970879f2ba89afadcde575
+                name: 플랫큐브 주문 알림 프로필
+                channelName: 플랫큐브
+                status: ACTIVE
+              templates:
+                - templateCode: SH-002
+                  name: 결제 완료 안내
+                  content: |-
+                    #{고객명}님의 결제가 완료되었습니다.
+                    주문번호: #{주문번호}
+                  button1Json:
+                    name: 주문내역 확인
+                    type: WL
+                    url_mobile: https://example.com/orders
+                    url_pc: https://example.com/orders
+                  button2Json: null
+                  category: ORDER
+                  status: APPROVED
+      responses:
+        "201":
+          description: 등록 또는 갱신 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - error
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      clientId:
+                        type: integer
+                        example: 1
+                      clientCode:
+                        type: string
+                        example: CLIENT_A
+                      profile:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            example: 1
+                          profileKey:
+                            type: string
+                            example: 338e25bbe39eab8970879f2ba89afadcde575
+                          name:
+                            type: string
+                            example: 플랫큐브 주문 알림 프로필
+                          channelName:
+                            type: string
+                            nullable: true
+                            example: 플랫큐브
+                          status:
+                            type: string
+                            example: ACTIVE
+                      templates:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 10
+                            templateCode:
+                              type: string
+                              example: SH-002
+                            name:
+                              type: string
+                              example: 결제 완료 안내
+                            status:
+                              type: string
+                              example: APPROVED
+                            mapped:
+                              type: boolean
+                              example: true
+                  error:
+                    nullable: true
+                    example: null
+        "400":
+          description: 요청 검증 실패, 다른 클라이언트/프로필에 이미 연결된 키 또는 코드
+        "404":
+          description: clientCode에 해당하는 클라이언트 없음

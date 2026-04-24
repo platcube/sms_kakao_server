@@ -9,6 +9,7 @@ export type ValidationResult<T> = { success: true; data: T } | { success: false;
 
 export type ValidationParser<T> = (input: unknown) => ValidationResult<T>;
 
+// 요청 body 검증 미들웨어 생성 함수
 export const validateQuery =
   <T>(parser: ValidationParser<T>): RequestHandler =>
   (req: Request, res: Response, next: NextFunction) => {
@@ -30,6 +31,7 @@ export const validateQuery =
     return next();
   };
 
+// 요청 body 검증 미들웨어
 export const validateBody =
   <T>(parser: ValidationParser<T>): RequestHandler =>
   (req: Request, res: Response, next: NextFunction) => {

@@ -1,0 +1,120 @@
+/api/v1/client/auth/user-login:
+  post:
+    tags:
+      - Client Auth
+    summary: 외주업체 사용자 로그인
+    description: |
+      외주업체 사용자 계정으로 로그인합니다.
+      성공 시 응답 body에는 `accessToken`을 반환하고, `refreshToken`은 HttpOnly 쿠키로 발급합니다.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - account
+              - password
+            properties:
+              account:
+                type: string
+                description: 로그인 계정 ID
+                example: client_a_admin
+              password:
+                type: string
+                description: 로그인 비밀번호
+                example: test1234!
+          examples:
+            default:
+              value:
+                account: client_a_admin
+                password: test1234!
+    responses:
+      "200":
+        description: 로그인 성공
+        headers:
+          Set-Cookie:
+            description: refresh token HttpOnly 쿠키
+            schema:
+              type: string
+              example: client_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Path=/api/v1/client/auth
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - success
+                - data
+                - error
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  required:
+                    - accessToken
+                  properties:
+                    accessToken:
+                      type: string
+                      description: API 호출용 액세스 토큰
+                      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                error:
+                  nullable: true
+                  example: null
+      "400":
+        description: 유효성 검증 실패
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - success
+                - data
+                - error
+              properties:
+                success:
+                  type: boolean
+                  example: false
+                data:
+                  nullable: true
+                  example: null
+                error:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                      example: COMMON_400_VALIDATION
+                    message:
+                      type: string
+                      example: Request validation failed
+                    details:
+                      nullable: true
+      "401":
+        description: 로그인 실패
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - success
+                - data
+                - error
+              properties:
+                success:
+                  type: boolean
+                  example: false
+                data:
+                  nullable: true
+                  example: null
+                error:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                      example: AUTH_401_UNAUTHORIZED
+                    message:
+                      type: string
+                      example: 계정 또는 비밀번호가 올바르지 않습니다.
+                    details:
+                      nullable: true

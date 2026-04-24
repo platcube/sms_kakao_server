@@ -3,10 +3,7 @@ import axios from "axios";
 import { SendKakaoBodyDto, SendKakaoResponseDto } from "@/api/v1/client/kakao/send/dto/send-kakao.dto";
 import { AppError } from "@/libs/error/app-error";
 import { ERROR_CODES } from "@/libs/error/error-codes";
-import {
-  PrcompanyKakaoSendResponse,
-  sendPrcompanyKakaoImmediate,
-} from "@/libs/integrations/prcompany/prcompany.kakao";
+import { PrcompanyKakaoSendResponse, sendPrcompanyKakaoImmediate } from "@/libs/integrations/prcompany/prcompany.kakao";
 import { prisma } from "@/libs/prisma/client";
 
 const DEFAULT_MAX_RETRY = 3;
@@ -34,7 +31,7 @@ const normalizeTempBtn1 = (value: SendKakaoBodyDto["tempBtn1"]) => {
 };
 
 const buildProviderPayload = (input: SendKakaoBodyDto) => ({
-  Callback: input.senderKey,
+  Callback: input.senderPhone,
   Phones: input.recipientPhone,
   ...(input.title ? { Title: input.title } : {}),
   Message: input.message,
@@ -64,6 +61,7 @@ const toResponseDto = (args: {
   ...(args.reason !== undefined ? { reason: args.reason } : {}),
 });
 
+// 카카오 알림톡 발송
 export const sendKakaoMessage = async (input: SendKakaoBodyDto): Promise<SendKakaoResponseDto> => {
   const client = await prisma.client.findFirst({
     where: {
@@ -73,7 +71,46 @@ export const sendKakaoMessage = async (input: SendKakaoBodyDto): Promise<SendKak
   });
 
   if (!client) {
-    throw new AppError(404, ERROR_CODES.COMMON_404_NOT_FOUND, "Client not found");
+    throw new AppError(404, ERROR_CODES.COMMON_404_NOT_FOUND, "클라이언트를 찾을 수 없습니다.");
+  }
+
+  if (input.senderPhone !== client.senderPhone) {
+    throw new AppError(400, ERROR_CODES.COMMON_400_VALIDATION, "클라이언트에 등록된 발신번호가 아닙니다.");
+  }
+
+  const recipientPhones = input.recipientPhone.join(",");
+
+  // 활성 템플릿 확인
+  const mappedTemplate = await prisma.clientKakaoTemplate.findFirst({
+    where: {
+      clientId: client.id,
+      kakaoTemplate: {
+        templateCode: input.tempCode,
+        status: "APPROVED",
+        profile: {
+          clientId: client.id,
+          profileKey: input.profileKey,
+          status: "ACTIVE",
+        },
+      },
+    },
+    select: {
+      kakaoTemplate: {
+        select: {
+          id: true,
+          templateCode: true,
+          button1Json: true,
+        },
+      },
+    },
+  });
+
+  if (!mappedTemplate) {
+    throw new AppError(
+      400,
+      ERROR_CODES.COMMON_400_VALIDATION,
+      "해당 클라이언트에 등록된 활성 카카오 템플릿이 아닙니다.",
+    );
   }
 
   if (input.idempotencyKey) {
@@ -109,8 +146,8 @@ export const sendKakaoMessage = async (input: SendKakaoBodyDto): Promise<SendKak
         messageType: "ALIMTALK",
         sendType: "NOW",
         status: "PENDING",
-        recipientPhone: input.recipientPhone,
-        senderKey: input.senderKey,
+        recipientPhone: recipientPhones,
+        senderKey: input.senderPhone,
         subject: input.title ?? null,
         content: input.message,
         templateCode: input.tempCode,
@@ -157,7 +194,7 @@ export const sendKakaoMessage = async (input: SendKakaoBodyDto): Promise<SendKak
 
   try {
     const providerResponse = await sendPrcompanyKakaoImmediate({
-      callback: input.senderKey,
+      callback: input.senderPhone,
       phones: input.recipientPhone,
       title: input.title,
       message: input.message,

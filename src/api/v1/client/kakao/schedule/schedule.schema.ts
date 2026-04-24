@@ -2,7 +2,9 @@ import { ScheduleKakaoBodyDto } from "@/api/v1/client/kakao/schedule/dto/schedul
 import { ValidationResult } from "@/libs/validation/validate";
 
 const PHONE_REGEX = /^[0-9]{9,20}$/;
+const SENDER_PHONE_REGEX = /^[0-9]{8,20}$/;
 const RESERVED_TIME_REGEX = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+const MAX_RECIPIENT_COUNT = 100;
 
 const isNonEmptyString = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
 const isOptionalString = (v: unknown): v is string | undefined => v === undefined || typeof v === "string";
@@ -10,13 +12,14 @@ const isValidTempBtn1 = (v: unknown): v is string | Record<string, unknown> =>
   v === undefined || typeof v === "string" || (typeof v === "object" && v !== null && !Array.isArray(v));
 
 export const parseKakaoScheduleBody = (input: unknown): ValidationResult<ScheduleKakaoBodyDto> => {
-  const source = (input ?? {}) as Record<string, unknown>;
+  const source = typeof input === "object" && input !== null && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
   const issues: { field: string; reason: string }[] = [];
 
   const clientCode = source.clientCode;
+  const apiKey = source.apiKey;
   const messageType = source.messageType;
   const recipientPhone = source.recipientPhone;
-  const senderKey = source.senderKey;
+  const senderPhone = source.senderPhone;
   const message = source.message;
   const title = source.title;
   const profileKey = source.profileKey;
@@ -30,11 +33,28 @@ export const parseKakaoScheduleBody = (input: unknown): ValidationResult<Schedul
   const idempotencyKey = source.idempotencyKey;
 
   if (!isNonEmptyString(clientCode)) issues.push({ field: "clientCode", reason: "clientCode is required" });
+  if (!isNonEmptyString(apiKey)) issues.push({ field: "apiKey", reason: "apiKey is required" });
   if (messageType !== "ALIMTALK") issues.push({ field: "messageType", reason: "messageType must be 'ALIMTALK'" });
-  if (!isNonEmptyString(recipientPhone) || !PHONE_REGEX.test(recipientPhone.trim())) {
-    issues.push({ field: "recipientPhone", reason: "recipientPhone must be numeric string" });
+  const normalizedPhones = Array.isArray(recipientPhone)
+    ? recipientPhone.map((v) => (typeof v === "string" ? v.trim() : v))
+    : null;
+
+  if (!Array.isArray(normalizedPhones) || normalizedPhones.length === 0) {
+    issues.push({ field: "recipientPhone", reason: "recipientPhone must be a non-empty array" });
+  } else {
+    if (normalizedPhones.length > MAX_RECIPIENT_COUNT) {
+      issues.push({ field: "recipientPhone", reason: `max ${MAX_RECIPIENT_COUNT} recipients are allowed` });
+    }
+
+    normalizedPhones.forEach((phone, index) => {
+      if (!isNonEmptyString(phone) || !PHONE_REGEX.test(phone)) {
+        issues.push({ field: `recipientPhone[${index}]`, reason: "phone must be numeric string" });
+      }
+    });
   }
-  if (!isNonEmptyString(senderKey)) issues.push({ field: "senderKey", reason: "senderKey is required" });
+  if (!isNonEmptyString(senderPhone) || !SENDER_PHONE_REGEX.test(senderPhone.trim())) {
+    issues.push({ field: "senderPhone", reason: "senderPhone must be numeric string" });
+  }
   if (!isNonEmptyString(message)) issues.push({ field: "message", reason: "message is required" });
   if (!isNonEmptyString(profileKey)) issues.push({ field: "profileKey", reason: "profileKey is required" });
   if (!isNonEmptyString(tempCode)) issues.push({ field: "tempCode", reason: "tempCode is required" });
@@ -73,9 +93,10 @@ export const parseKakaoScheduleBody = (input: unknown): ValidationResult<Schedul
     success: true,
     data: {
       clientCode: String(clientCode).trim(),
+      apiKey: String(apiKey).trim(),
       messageType: "ALIMTALK",
-      recipientPhone: String(recipientPhone).trim(),
-      senderKey: String(senderKey).trim(),
+      recipientPhone: normalizedPhones as string[],
+      senderPhone: String(senderPhone).trim(),
       message: String(message),
       profileKey: String(profileKey).trim(),
       tempCode: String(tempCode).trim(),
