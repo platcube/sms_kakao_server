@@ -6,10 +6,7 @@ paths:
       summary: SMS/LMS 즉시 발송 요청
       description: |
         외주사 클라이언트가 플랫큐브를 통해 SMS 또는 LMS 즉시 발송을 요청합니다.
-        `Authorization`에는 user-login으로 발급받은 accessToken을 `Bearer` 형식으로 전달합니다.
-        `apiKey`는 요청 body에 포함하며, 로그인한 사용자와 같은 client의 API Key인지 추가 검증합니다.
-      security:
-        - bearerAuth: []
+        `clientCode`와 `apiKey`는 요청 body에 포함하며, server-to-server 인증 정보로 검증합니다.
       requestBody:
         required: true
         content:
@@ -61,18 +58,18 @@ paths:
                 content:
                   type: string
                   description: 문자 본문(SMS 90바이트 이하, LMS 2000바이트 이하)
-                  example: 테스트입니다.
+                  example: 문자발송 대회공지 안내 입니다.
                 idempotencyKey:
                   type: string
                   description: 중복 요청 방지 키
                   example: order-20260304-1001-sms
                 etc1:
                   type: string
-                  description: prcompany 부가 필드 1 (선택)
+                  description: prcompany 부가 필드 1 (선택) - 전송주체 구분 활용(ex. rockandrun)
                   example: "2148808000"
                 etc2:
                   type: string
-                  description: prcompany 부가 필드 2 (선택)
+                  description: prcompany 부가 필드 2 (선택) - 클라이언트 식별 활용(ex. client_a)
                   example: "1122334455"
       responses:
         "200":
@@ -154,6 +151,6 @@ paths:
         "400":
           description: 요청 검증 실패
         "401":
-          description: 인증 실패 (accessToken 또는 body.apiKey/clientCode 오류)
+          description: 인증 실패 (body.apiKey 또는 clientCode 오류)
         "404":
           description: 클라이언트 없음
