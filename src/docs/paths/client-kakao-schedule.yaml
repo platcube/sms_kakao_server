@@ -1,11 +1,11 @@
 paths:
-  /api/v1/client/kakao/send:
+  /api/v1/client/kakao/schedule:
     post:
       tags:
         - Client Kakao
-      summary: 카카오 알림톡 즉시 발송 요청
+      summary: 카카오 알림톡 예약 발송 요청
       description: |
-        외주사 클라이언트가 플랫큐브를 통해 카카오 알림톡 즉시 발송을 요청합니다.
+        외주사 클라이언트가 플랫큐브를 통해 카카오 알림톡 예약 발송을 요청합니다.
         `clientCode`와 `apiKey`는 요청 body에 포함하며, server-to-server 인증 정보로 검증합니다.
         발송 전 `clientCode`, `profileKey`, `tempCode`가 시스템에 등록된 활성 템플릿 매핑인지 확인합니다.
       requestBody:
@@ -25,6 +25,7 @@ paths:
                 - profileKey
                 - tempCode
                 - smsGubn
+                - reservedTime
               properties:
                 clientCode:
                   type: string
@@ -59,7 +60,7 @@ paths:
                 message:
                   type: string
                   description: 템플릿 변수를 실제 값으로 치환한 최종 알림톡 본문(1000자 이하)
-                  example: "[락앤런 트레일러닝]\n주문 취소가 완료되었습니다.\n\n홍길동님,\n요청하신 주문이 정상적으로 취소되었습니다.\n\n• 주문상품 : 락앤런 참가권\n• 환불금액 : 30000원\n• 취소일시 : 2026-04-23 15:30\n• 주문번호 : ORDER-20260423-001\n\n환불은 카드사/결제사 사정에 따라\n영업일 기준 3~7일 내 처리될 수 있습니다.\n\n이용해주셔서 감사합니다."
+                  example: "[락앤런 트레일러닝]\n주문 취소가 완료되었습니다."
                 profileKey:
                   type: string
                   description: 시스템에 등록된 활성 카카오 발신프로필 키
@@ -88,6 +89,10 @@ paths:
                     - N
                   description: 실패 시 일반문자 대체발송 여부
                   example: N
+                reservedTime:
+                  type: string
+                  description: 예약 시각(YYYY-MM-DD HH:mm:ss)
+                  example: "2026-04-23 15:30:00"
                 ketc1:
                   type: string
                   description: prcompany 기타1 필드(선택, 160바이트 이하) - 전송주체 구분 활용(ex. rockandrun)
@@ -99,7 +104,7 @@ paths:
                 idempotencyKey:
                   type: string
                   description: 중복 요청 방지 키
-                  example: kakao-cancel-ORDER-20260423-001
+                  example: kakao-cancel-ORDER-20260423-001-scheduled
             example:
               clientCode: yglee_a
               apiKey: pc_f81d7154078910c3dbdc18d5db20e2ba69d4f6eb0d64907c765f62098c035197
@@ -108,7 +113,7 @@ paths:
                 - "01012345678"
               senderPhone: "15998898"
               title: 주문 취소 안내
-              message: "[락앤런 트레일러닝]\n주문 취소가 완료되었습니다.\n\n홍길동님,\n요청하신 주문이 정상적으로 취소되었습니다.\n\n• 주문상품 : 락앤런 참가권\n• 환불금액 : 30000원\n• 취소일시 : 2026-04-23 15:30\n• 주문번호 : ORDER-20260423-001\n\n환불은 카드사/결제사 사정에 따라\n영업일 기준 3~7일 내 처리될 수 있습니다.\n\n이용해주셔서 감사합니다."
+              message: "[락앤런 트레일러닝]\n주문 취소가 완료되었습니다."
               profileKey: 0b247bcf1617351cf6712b3457a0e91446ba53
               tempCode: SH-002
               tempBtn1:
@@ -116,12 +121,13 @@ paths:
                 type: 채널 추가
               failFlag: 0
               smsGubn: N
+              reservedTime: "2026-04-23 15:30:00"
               ketc1: ORDER-20260423-001
               ketc2: yglee_a
-              idempotencyKey: kakao-cancel-ORDER-20260423-001
+              idempotencyKey: kakao-cancel-ORDER-20260423-001-scheduled
       responses:
         "200":
-          description: 발송 요청 처리 성공(접수 성공/재시도 예정/최종 실패 포함)
+          description: 예약 발송 요청 처리 성공(예약 접수 성공/재시도 예정/최종 실패 포함)
           content:
             application/json:
               schema:
@@ -144,7 +150,7 @@ paths:
                     properties:
                       messageId:
                         type: integer
-                        example: 123
+                        example: 301
                       messageType:
                         type: string
                         enum:
@@ -152,11 +158,11 @@ paths:
                         example: ALIMTALK
                       status:
                         type: string
-                        example: ACCEPTED
+                        example: SCHEDULED
                       requestedAt:
                         type: string
                         format: date-time
-                        example: "2026-04-23T06:30:00.000Z"
+                        example: "2026-04-23T06:20:00.000Z"
                       reason:
                         type: object
                         nullable: true
@@ -170,31 +176,6 @@ paths:
                   error:
                     nullable: true
                     example: null
-              examples:
-                accepted:
-                  summary: 공급자 접수 성공
-                  value:
-                    success: true
-                    data:
-                      messageId: 123
-                      messageType: ALIMTALK
-                      status: ACCEPTED
-                      requestedAt: "2026-04-23T06:30:00.000Z"
-                      reason: null
-                    error: null
-                retryScheduled:
-                  summary: 재시도 예정
-                  value:
-                    success: true
-                    data:
-                      messageId: 124
-                      messageType: ALIMTALK
-                      status: PENDING
-                      requestedAt: "2026-04-23T06:31:00.000Z"
-                      reason:
-                        code: MESSAGE_RETRY_SCHEDULED
-                        message: 공급자 일시 오류로 재시도가 예약되었습니다.
-                    error: null
         "400":
           description: 요청 검증 실패 또는 등록되지 않은 카카오 템플릿 매핑
         "401":

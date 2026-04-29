@@ -3,7 +3,6 @@ import { Router } from "express";
 import { sendMessageController } from "@/api/v1/client/messages/send/send.controller";
 import { parseSendMessageBody } from "@/api/v1/client/messages/send/send.schema";
 import { clientBodyApiKeyAuth } from "@/libs/auth/clientBodyApiKeyAuth";
-import { clientUserAuth } from "@/libs/auth/clientUserAuth";
 import { validateBody } from "@/libs/validation/validate";
 
 export const sendRouter = Router();
@@ -15,9 +14,7 @@ export const sendRouter = Router();
  *     tags:
  *       - Client Messages
  *     summary: SMS 즉시 발송 요청
- *     description: 외주사 클라이언트가 플랫큐브를 통해 SMS 즉시 발송을 요청합니다.
- *     security:
- *       - bearerAuth: []
+ *     description: 외주사 클라이언트가 플랫큐브를 통해 SMS 즉시 발송을 요청합니다. clientCode와 apiKey는 body로 전달합니다.
  *     requestBody:
  *       required: true
  *       content:
@@ -27,6 +24,7 @@ export const sendRouter = Router();
  *             additionalProperties: false
  *             required:
  *               - clientCode
+ *               - apiKey
  *               - messageType
  *               - recipientPhone
  *               - senderKey
@@ -36,6 +34,10 @@ export const sendRouter = Router();
  *                 type: string
  *                 description: 외주사 식별 코드
  *                 example: CLIENT_A
+ *               apiKey:
+ *                 type: string
+ *                 description: client API Key
+ *                 example: pc_f81d7154078910c3dbdc18d5db20e2ba69d4f6eb0d64907c765f62098c035197
  *               messageType:
  *                 type: string
  *                 enum: [SMS]
@@ -136,9 +138,9 @@ export const sendRouter = Router();
  *       '400':
  *         description: 요청 검증 실패
  *       '401':
- *         description: 인증 실패 (Authorization 또는 clientCode 오류)
+ *         description: 인증 실패 (body.apiKey 또는 clientCode 오류)
  *       '404':
  *         description: 클라이언트 없음
  */
 // SMS 즉시 발송 요청 엔드포인트
-sendRouter.post("/", validateBody(parseSendMessageBody), clientUserAuth, clientBodyApiKeyAuth, sendMessageController);
+sendRouter.post("/", validateBody(parseSendMessageBody), clientBodyApiKeyAuth, sendMessageController);
