@@ -10,7 +10,19 @@ export const getClientUserMe = async (authUser: ClientUserMeAuthDto): Promise<Cl
   const clientUser = await prisma.clientUser.findUnique({
     where: { id: authUser.userId },
     include: {
-      client: true,
+      client: {
+        include: {
+          kakaoProfiles: {
+            select: {
+              name: true,
+              channelName: true,
+              profileKey: true,
+              status: true,
+            },
+            orderBy: { id: "asc" },
+          },
+        },
+      },
     },
   });
 
@@ -35,6 +47,7 @@ export const getClientUserMe = async (authUser: ClientUserMeAuthDto): Promise<Cl
       status: clientUser.client.status,
       senderPhone: clientUser.client.senderPhone,
       apiKey,
+      kakaoProfiles: clientUser.client.kakaoProfiles,
     },
   };
 };

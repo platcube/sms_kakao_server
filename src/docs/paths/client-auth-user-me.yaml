@@ -67,6 +67,7 @@
                         - status
                         - senderPhone
                         - apiKey
+                        - kakaoProfiles
                       properties:
                         id:
                           type: integer
@@ -91,6 +92,36 @@
                           nullable: true
                           description: API Key 원문. 암호화 저장값이 없는 기존 클라이언트는 null
                           example: pc_f81d7154078910c3dbdc18d5db20e2ba69d4f6eb0d64907c765f62098c035197
+                        kakaoProfiles:
+                          type: array
+                          description: 클라이언트에 등록된 카카오 발신프로필 목록
+                          items:
+                            type: object
+                            required:
+                              - name
+                              - channelName
+                              - profileKey
+                              - status
+                            properties:
+                              name:
+                                type: string
+                                description: 발신프로필 이름
+                                example: 락앤런
+                              channelName:
+                                type: string
+                                nullable: true
+                                description: 카카오 채널명
+                                example: 락앤런 트레일러닝
+                              profileKey:
+                                type: string
+                                description: 카카오채널 발신프로필 키
+                                example: 0b247bcf1617351cf6712b3457a0e91446ba53
+                              status:
+                                type: string
+                                enum:
+                                  - ACTIVE
+                                  - INACTIVE
+                                example: ACTIVE
                 error:
                   nullable: true
                   example: null
