@@ -19,5 +19,13 @@ export type ClientUserMeResponseDto = {
     status: "ACTIVE" | "INACTIVE";
     senderPhone: string;
     apiKey: string | null;
+    kakaoProfiles: KakaoProfileDto[];
   };
+};
+
+export type KakaoProfileDto = {
+  name: string;
+  channelName: string | null;
+  profileKey: string;
+  status: "ACTIVE" | "INACTIVE";
 };
