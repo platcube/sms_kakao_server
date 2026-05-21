@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { brandTalkRouter } from "@/api/v1/client/kakao/brand/brand.route";
 import { profileRouter } from "@/api/v1/client/kakao/profile/profile.route";
 import { kakaoScheduleRouter } from "@/api/v1/client/kakao/schedule/schedule.route";
 import { kakaoSendRouter } from "@/api/v1/client/kakao/send/send.route";
@@ -12,6 +13,7 @@ export const clientKakaoRouter = Router();
 
 clientKakaoRouter.use("/send", kakaoSendRouter);
 clientKakaoRouter.use("/schedule", kakaoScheduleRouter);
+clientKakaoRouter.use("/brand", brandTalkRouter);
 clientKakaoRouter.use("/profile", profileRouter);
 clientKakaoRouter.use("/templates", templatesRouter);
 clientKakaoRouter.use("/templates/:templateCode/button1", templateButton1Router);

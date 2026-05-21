@@ -2,12 +2,11 @@ import crypto from "crypto";
 import { NextFunction, Request, Response } from "express";
 
 import { prisma } from "@/libs/prisma/client";
+import { decryptApiKey } from "./apiKeyCrypto";
 
 const sha256Hex = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
 // 발송 API 전용 body apiKey 인증 미들웨어
-// - body.clientCode / body.apiKey를 이용해 실제 클라이언트 API Key를 검증합니다.
-// - server-to-server 발송 API에서 accessToken 없이 사용합니다.
 export const clientBodyApiKeyAuth = async (req: Request, res: Response, next: NextFunction) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
 

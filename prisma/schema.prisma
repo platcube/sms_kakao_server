@@ -305,6 +305,7 @@ enum MessageType {
   LMS // 장문 문자
   MMS // 이미지 포함 멀티미디어 문자
   ALIMTALK // 카카오 알림톡
+  BRANDTALK // 카카오 브랜드톡(구친구톡)
 }
 
 // 발송 시점 유형
