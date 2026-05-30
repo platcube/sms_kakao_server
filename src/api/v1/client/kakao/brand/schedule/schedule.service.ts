@@ -4,6 +4,7 @@ import {
   ScheduleBrandTalkBodyDto,
   ScheduleBrandTalkResponseDto,
 } from "@/api/v1/client/kakao/brand/schedule/dto/schedule-brandtalk.dto";
+import { getInitialDeliveryPollAt } from "@/libs/delivery-polling";
 import { AppError } from "@/libs/error/app-error";
 import { ERROR_CODES } from "@/libs/error/error-codes";
 import {
@@ -195,6 +196,7 @@ export const scheduleBrandTalkMessage = async (
       providerResponse,
       requestedAt: message.requestedAt,
       attemptNo: dispatch.attemptNo,
+      pollBaseAt: message.scheduledAt,
     });
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -255,9 +257,11 @@ const handleProviderResponse = async (args: {
   providerResponse: PrcompanyBrandTalkSendResponse;
   requestedAt: Date;
   attemptNo: number;
+  pollBaseAt?: Date | null;
 }): Promise<ScheduleBrandTalkResponseDto> => {
   const { providerResponse } = args;
   const respondedAt = new Date();
+  const initialDeliveryPollAt = getInitialDeliveryPollAt(args.pollBaseAt ?? respondedAt);
 
   const isSuccess = providerResponse.ResCd === 0;
   const isRetryable = isSuccess ? false : isRetryableBrandTalkReservedCode(providerResponse.ResCd);
@@ -283,6 +287,10 @@ const handleProviderResponse = async (args: {
         where: { id: args.messageId },
         data: {
           status: "ACCEPTED",
+          deliveryPollStatus: "WAITING",
+          deliveryPollAttempt: 0,
+          nextPollAt: initialDeliveryPollAt,
+          lastPolledAt: null,
           statusReasonCode: null,
           statusReasonMessage: null,
         },
