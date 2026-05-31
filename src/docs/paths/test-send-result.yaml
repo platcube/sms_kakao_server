@@ -1,0 +1,270 @@
+paths:
+  /api/v1/test/send-result:
+    post:
+      tags:
+        - Test
+      summary: prcompany 전송결과 조회 테스트
+      description: |
+        개발 환경에서 prcompany `/rslt/cnt` 전송결과 API 호출과 응답 정규화만 테스트합니다.
+
+        이 API는 DB를 수정하지 않습니다.
+        운영 환경(`NODE_ENV=production`)에서는 사용할 수 없습니다.
+
+        prcompany 요청 body는 서버에서 아래 값으로 구성합니다.
+        - `Etc1`: 요청 body의 `idempotencyKey`
+        - `SType`: `KAT`
+        - `GType`: `DD`
+        - `SDate`: 요청 body의 `sDate` 또는 서버 기본값
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - idempotencyKey
+              properties:
+                idempotencyKey:
+                  type: string
+                  description: 발송 시 Ketc1에 전달했고, 결과조회 시 Etc1로 조회할 idempotencyKey
+                  example: kakao-cancel-ORDER-20260531-001
+                sDate:
+                  type: string
+                  description: prcompany DD 조회일자(YYYY-MM-DD). 생략하면 메시지 요청일 또는 현재일 기준으로 조회합니다.
+                  example: "2026-05-31"
+            example:
+              idempotencyKey: kakao-cancel-ORDER-20260531-001
+              sDate: "2026-05-31"
+      responses:
+        "200":
+          description: prcompany 전송결과 조회 테스트 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - error
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - found
+                      - totalCount
+                      - successCount
+                      - failedCount
+                      - rawJson
+                    properties:
+                      found:
+                        type: boolean
+                        description: 조회 결과 건수가 1건 이상이면 true, 아직 결과가 없으면 false
+                        example: true
+                      totalCount:
+                        type: integer
+                        description: prcompany TCnt 총 건수
+                        example: 10
+                      successCount:
+                        type: integer
+                        description: prcompany SCnt 성공 건수
+                        example: 8
+                      failedCount:
+                        type: integer
+                        description: prcompany FCnt 실패 건수
+                        example: 2
+                      providerResultCode:
+                        type: string
+                        nullable: true
+                        description: prcompany ResCd
+                        example: "0"
+                      providerResultMessage:
+                        type: string
+                        nullable: true
+                        description: prcompany ResMsg
+                        example: OK
+                      rawJson:
+                        type: object
+                        additionalProperties: true
+                        description: prcompany 원본 응답
+                  error:
+                    nullable: true
+                    example: null
+              example:
+                success: true
+                data:
+                  found: true
+                  totalCount: 10
+                  successCount: 8
+                  failedCount: 2
+                  providerResultCode: "0"
+                  providerResultMessage: OK
+                  rawJson:
+                    TCnt: 10
+                    SCnt: 8
+                    FCnt: 2
+                    Items: []
+                    ResCd: 0
+                    ResMsg: OK
+                    Mac: null
+                error: null
+        "400":
+          description: 요청 검증 실패
+        "404":
+          description: 운영 환경에서 테스트 API 접근 또는 라우트 없음
+        "500":
+          description: prcompany 연동 오류 또는 서버 오류
+
+  /api/v1/test/send-result/sync:
+    post:
+      tags:
+        - Test
+      summary: Message 기준 전송결과 조회 및 DB 저장 테스트
+      description: |
+        개발 환경에서 특정 `Message`를 기준으로 prcompany 전송결과를 조회하고,
+        결과가 있으면 `DeliveryResult` 저장, `Message.status` 최종화, `MessageEvent` 생성을 수행합니다.
+
+        실제 운영 스케줄러가 수행할 전송결과 동기화 작업을 Postman에서 수동 테스트하기 위한 API입니다.
+        운영 환경(`NODE_ENV=production`)에서는 사용할 수 없습니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - messageId
+              properties:
+                messageId:
+                  type: integer
+                  description: 전송결과를 조회하고 저장할 Message ID
+                  example: 123
+            example:
+              messageId: 123
+      responses:
+        "200":
+          description: 전송결과 동기화 테스트 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - error
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - status
+                      - messageId
+                      - normalizedResult
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - SAVED
+                          - NOT_FOUND
+                        description: SAVED는 DB 저장 완료, NOT_FOUND는 아직 prcompany 결과 없음
+                        example: SAVED
+                      messageId:
+                        type: integer
+                        example: 123
+                      deliveryResultId:
+                        type: integer
+                        nullable: true
+                        description: 저장된 DeliveryResult ID. NOT_FOUND인 경우 없을 수 있습니다.
+                        example: 45
+                      normalizedResult:
+                        type: object
+                        required:
+                          - found
+                          - totalCount
+                          - successCount
+                          - failedCount
+                          - rawJson
+                        properties:
+                          found:
+                            type: boolean
+                            example: true
+                          totalCount:
+                            type: integer
+                            example: 10
+                          successCount:
+                            type: integer
+                            example: 8
+                          failedCount:
+                            type: integer
+                            example: 2
+                          providerResultCode:
+                            type: string
+                            nullable: true
+                            example: "0"
+                          providerResultMessage:
+                            type: string
+                            nullable: true
+                            example: OK
+                          rawJson:
+                            type: object
+                            additionalProperties: true
+                  error:
+                    nullable: true
+                    example: null
+              examples:
+                saved:
+                  summary: 결과조회 및 DB 저장 완료
+                  value:
+                    success: true
+                    data:
+                      status: SAVED
+                      messageId: 123
+                      deliveryResultId: 45
+                      normalizedResult:
+                        found: true
+                        totalCount: 10
+                        successCount: 8
+                        failedCount: 2
+                        providerResultCode: "0"
+                        providerResultMessage: OK
+                        rawJson:
+                          TCnt: 10
+                          SCnt: 8
+                          FCnt: 2
+                          Items: []
+                          ResCd: 0
+                          ResMsg: OK
+                          Mac: null
+                    error: null
+                notFound:
+                  summary: 아직 결과 없음
+                  value:
+                    success: true
+                    data:
+                      status: NOT_FOUND
+                      messageId: 123
+                      normalizedResult:
+                        found: false
+                        totalCount: 0
+                        successCount: 0
+                        failedCount: 0
+                        providerResultCode: "0"
+                        providerResultMessage: null
+                        rawJson:
+                          TCnt: 0
+                          SCnt: 0
+                          FCnt: 0
+                          ResCd: 0
+                    error: null
+        "400":
+          description: 요청 검증 실패 또는 카카오 메시지가 아닌 Message
+        "404":
+          description: Message 없음 또는 운영 환경에서 테스트 API 접근
+        "500":
+          description: prcompany 연동 오류 또는 서버 오류

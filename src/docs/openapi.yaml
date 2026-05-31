@@ -42,6 +42,8 @@ tags:
     description: 외주사 메시지 발송 API
   - name: Client Kakao
     description: 외주사 카카오 알림톡 발송 API
+  - name: Test
+    description: 개발 환경 전용 테스트 API
 components:
   securitySchemes:
     bearerAuth:

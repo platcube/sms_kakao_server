@@ -6,6 +6,7 @@ import { healthRouter } from "@/api/system/health/health.route";
 import { clientKakaoRouter } from "@/api/v1/client/kakao/kakao.route";
 import { clientMessagesRouter } from "@/api/v1/client/messages/messages.route";
 import { systemKakaoRouter } from "@/api/system/kakao/kakao.route";
+import { testRouter } from "@/api/v1/test/test.route";
 
 export const apiV1Router = Router();
 
@@ -15,3 +16,4 @@ apiV1Router.use("/system/kakao", systemKakaoRouter);
 apiV1Router.use("/client/auth", clientAuthRouter);
 apiV1Router.use("/client/messages", clientMessagesRouter);
 apiV1Router.use("/client/kakao", clientKakaoRouter);
+apiV1Router.use("/test", testRouter);
