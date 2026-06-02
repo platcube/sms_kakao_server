@@ -12,7 +12,7 @@ paths:
 
         prcompany 요청 body는 서버에서 아래 값으로 구성합니다.
         - `Etc1`: 요청 body의 `idempotencyKey`
-        - `SType`: `KAT`
+        - `SType`: `messageType=ALIMTALK`이면 `KAT`, `messageType=BRANDTALK`이면 `KFT`
         - `GType`: `DD`
         - `SDate`: 요청 body의 `sDate` 또는 서버 기본값
       requestBody:
@@ -23,8 +23,16 @@ paths:
               type: object
               additionalProperties: false
               required:
+                - messageType
                 - idempotencyKey
               properties:
+                messageType:
+                  type: string
+                  enum:
+                    - ALIMTALK
+                    - BRANDTALK
+                  description: 전송결과 조회 SType 매핑 기준. ALIMTALK는 KAT, BRANDTALK는 KFT로 조회합니다.
+                  example: ALIMTALK
                 idempotencyKey:
                   type: string
                   description: 발송 시 Ketc1에 전달했고, 결과조회 시 Etc1로 조회할 idempotencyKey
@@ -34,6 +42,7 @@ paths:
                   description: prcompany DD 조회일자(YYYY-MM-DD). 생략하면 메시지 요청일 또는 현재일 기준으로 조회합니다.
                   example: "2026-05-31"
             example:
+              messageType: ALIMTALK
               idempotencyKey: kakao-cancel-ORDER-20260531-001
               sDate: "2026-05-31"
       responses:

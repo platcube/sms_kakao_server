@@ -3,9 +3,7 @@ import {
   TestSyncSendResultBodyDto,
 } from "@/api/v1/test/send-result/dto/test-send-result.dto";
 
-type ValidationResult<T> =
-  | { success: true; data: T }
-  | { success: false; issues: { field: string; reason: string }[] };
+type ValidationResult<T> = { success: true; data: T } | { success: false; issues: { field: string; reason: string }[] };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -22,6 +20,14 @@ export const parseTestPrcompanySendResultBody = (body: unknown): ValidationResul
 
   const idempotencyKey = body.idempotencyKey;
   const sDate = body.sDate;
+  const messageType = body.messageType;
+
+  if (messageType !== "ALIMTALK" && messageType !== "BRANDTALK") {
+    issues.push({
+      field: "messageType",
+      reason: "messageType must be ALIMTALK or BRANDTALK",
+    });
+  }
 
   if (!isNonEmptyString(idempotencyKey)) {
     issues.push({ field: "idempotencyKey", reason: "idempotencyKey is required" });
@@ -39,6 +45,7 @@ export const parseTestPrcompanySendResultBody = (body: unknown): ValidationResul
     success: true,
     data: {
       idempotencyKey: String(idempotencyKey).trim(),
+      messageType: messageType as "ALIMTALK" | "BRANDTALK",
       ...(isNonEmptyString(sDate) ? { sDate: sDate.trim() } : {}),
     },
   };

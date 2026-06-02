@@ -5,6 +5,7 @@ import {
 } from "@/libs/integrations/prcompany/prcompany.client";
 
 export type PrcompanyResultCountRequest = {
+  messageType: "ALIMTALK" | "BRANDTALK";
   idempotencyKey: string;
   requestedAt?: Date;
   gType?: string;
@@ -166,6 +167,14 @@ export const normalizePrcompanyResultCountResponse = (
   };
 };
 
+// 카카오 메시지 발송 유형에 따라 prcompany SType 정의
+const getPrcompanyResultSType = (messageType: "ALIMTALK" | "BRANDTALK") => {
+  if (messageType === "ALIMTALK") return "KAT";
+  if (messageType === "BRANDTALK") return "KFT";
+
+  throw new Error("Unsupported kakao messageType");
+};
+
 // idempotencyKey 기준으로 prcompany 전송결과 건수 조회
 export const getPrcompanyResultCount = async (
   input: PrcompanyResultCountRequest,
@@ -174,7 +183,7 @@ export const getPrcompanyResultCount = async (
 
   const payload = {
     Etc1: input.idempotencyKey,
-    SType: "KAT",
+    SType: getPrcompanyResultSType(input.messageType),
     GType: input.gType ?? process.env.PR_RESULT_COUNT_GTYPE?.trim() ?? "DD",
     SDate: input.sDate ?? formatPrcompanyResultDate(requestedAt),
   };

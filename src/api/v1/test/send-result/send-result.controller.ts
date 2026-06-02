@@ -11,8 +11,8 @@ import { syncSendResultForMessage } from "@/libs/send-results";
 export const testPrcompanySendResultController = async (_req: Request, res: Response) => {
   const body = res.locals.validatedBody as TestPrcompanySendResultBodyDto;
 
-  console.log("body:", body);
   const data = await getPrcompanyResultCount({
+    messageType: body.messageType,
     idempotencyKey: body.idempotencyKey,
     sDate: body.sDate,
   });

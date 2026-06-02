@@ -47,7 +47,7 @@ const getStatusReason = (result: NormalizedPrcompanyResultCount) => {
   };
 };
 
-// 특정 Message를 기준으로 prcompany 전송결과 API를 호출하고 DeliveryResult에 저장합니다.
+// 특정 Message를 기준으로 prcompany 전송결과 API를 호출하고 DeliveryResult에 저장
 export const syncSendResultForMessage = async (messageId: number): Promise<SyncSendResultForMessageResult> => {
   const message = await prisma.message.findUnique({
     where: { id: messageId },
@@ -72,6 +72,7 @@ export const syncSendResultForMessage = async (messageId: number): Promise<SyncS
   }
 
   const normalizedResult = await getPrcompanyResultCount({
+    messageType: message.messageType,
     idempotencyKey: message.idempotencyKey,
     requestedAt: message.requestedAt,
   });

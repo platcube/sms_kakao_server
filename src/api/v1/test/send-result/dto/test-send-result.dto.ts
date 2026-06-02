@@ -1,4 +1,5 @@
 export type TestPrcompanySendResultBodyDto = {
+  messageType: "ALIMTALK" | "BRANDTALK";
   idempotencyKey: string;
   sDate?: string;
 };
