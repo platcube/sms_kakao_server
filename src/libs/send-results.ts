@@ -121,6 +121,7 @@ export const syncSendResultForMessage = async (messageId: number): Promise<SyncS
         status: finalStatus,
         finalizedAt: confirmedAt,
         deliveryPollStatus: "COMPLETE",
+        deliveryPollAttempt: { increment: 1 },
         lastPolledAt: confirmedAt,
         statusReasonCode: statusReason.code,
         statusReasonMessage: statusReason.message,
