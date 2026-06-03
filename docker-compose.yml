@@ -20,3 +20,18 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sms_kakao_scheduler
+    restart: unless-stopped
+    env_file:
+      - ./sms_kakao_server/.env
+    environment:
+      NODE_ENV: production
+      TS_NODE_BASEURL: ./dist
+    command: ["node", "-r", "tsconfig-paths/register", "-r", "dotenv/config", "dist/scheduler.js"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
