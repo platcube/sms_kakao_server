@@ -5,8 +5,10 @@
   "type": "commonjs",
   "scripts": {
     "dev": "cross-env NODE_ENV=development ts-node-dev --respawn --transpile-only -r tsconfig-paths/register -r dotenv/config src/server.ts",
+    "dev:scheduler": "cross-env NODE_ENV=development ts-node-dev --respawn --transpile-only -r tsconfig-paths/register -r dotenv/config src/scheduler.ts",
     "build": "tsc -p tsconfig.json",
     "start": "cross-env NODE_ENV=production node -r tsconfig-paths/register -r dotenv/config dist/server.js",
+    "start:scheduler": "cross-env NODE_ENV=production node -r tsconfig-paths/register -r dotenv/config dist/scheduler.js",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
@@ -21,12 +23,14 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
+    "node-schedule": "^2.1.1",
     "tsconfig-paths": "^4.2.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.12.2",
+    "@types/node-schedule": "^2.1.8",
     "cross-env": "^10.0.0",
     "prisma": "^7.4.1",
     "swagger-jsdoc": "^6.2.8",

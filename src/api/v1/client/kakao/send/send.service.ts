@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import { SendKakaoBodyDto, SendKakaoResponseDto } from "@/api/v1/client/kakao/send/dto/send-kakao.dto";
+import { getInitialDeliveryPollAt } from "@/libs/delivery-polling";
 import { AppError } from "@/libs/error/app-error";
 import { ERROR_CODES } from "@/libs/error/error-codes";
 import { PrcompanyKakaoSendResponse, sendPrcompanyKakaoImmediate } from "@/libs/integrations/prcompany/prcompany.kakao";
@@ -276,6 +277,7 @@ const handleProviderResponse = async (args: {
 }): Promise<SendKakaoResponseDto> => {
   const { providerResponse } = args;
   const respondedAt = new Date();
+  const initialDeliveryPollAt = getInitialDeliveryPollAt(respondedAt);
 
   const isSuccess = providerResponse.ResCd === 0;
   const isRetryable = isSuccess ? false : isRetryableKakaoCode(providerResponse.ResCd);
@@ -301,6 +303,10 @@ const handleProviderResponse = async (args: {
         where: { id: args.messageId },
         data: {
           status: "ACCEPTED",
+          deliveryPollStatus: "WAITING",
+          deliveryPollAttempt: 0,
+          nextPollAt: initialDeliveryPollAt,
+          lastPolledAt: null,
           statusReasonCode: null,
           statusReasonMessage: null,
         },

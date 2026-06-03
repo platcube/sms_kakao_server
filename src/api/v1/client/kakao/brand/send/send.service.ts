@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import { SendBrandTalkBodyDto, SendBrandTalkResponseDto } from "@/api/v1/client/kakao/brand/send/dto/send-brandtalk.dto";
+import { getInitialDeliveryPollAt } from "@/libs/delivery-polling";
 import { AppError } from "@/libs/error/app-error";
 import { ERROR_CODES } from "@/libs/error/error-codes";
 import {
@@ -249,6 +250,7 @@ const handleProviderResponse = async (args: {
 }): Promise<SendBrandTalkResponseDto> => {
   const { providerResponse } = args;
   const respondedAt = new Date();
+  const initialDeliveryPollAt = getInitialDeliveryPollAt(respondedAt);
 
   const isSuccess = providerResponse.ResCd === 0;
   const isRetryable = isSuccess ? false : isRetryableBrandTalkCode(providerResponse.ResCd);
@@ -274,6 +276,10 @@ const handleProviderResponse = async (args: {
         where: { id: args.messageId },
         data: {
           status: "ACCEPTED",
+          deliveryPollStatus: "WAITING",
+          deliveryPollAttempt: 0,
+          nextPollAt: initialDeliveryPollAt,
+          lastPolledAt: null,
           statusReasonCode: null,
           statusReasonMessage: null,
         },
