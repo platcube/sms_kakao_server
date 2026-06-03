@@ -28,7 +28,7 @@ services:
     container_name: sms_kakao_scheduler
     restart: unless-stopped
     env_file:
-      - ./sms_kakao_server/.env
+      - .env
     environment:
       NODE_ENV: production
       TS_NODE_BASEURL: ./dist
