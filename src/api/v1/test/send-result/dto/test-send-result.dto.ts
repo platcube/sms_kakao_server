@@ -7,3 +7,7 @@ export type TestPrcompanySendResultBodyDto = {
 export type TestSyncSendResultBodyDto = {
   messageId: number;
 };
+
+export type TestSendResultWebhookBodyDto = {
+  messageId: number;
+};

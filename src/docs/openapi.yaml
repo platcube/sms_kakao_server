@@ -31,8 +31,8 @@ info:
 servers:
   - url: https://message.platcube.com
     description: deploy
-  # - url: http://localhost:5100
-  #   description: dev
+  - url: http://localhost:5100
+    description: dev
 tags:
   - name: System Kakao
     description: 시스템 운영용 카카오 발신프로필/템플릿 관리 API

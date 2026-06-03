@@ -124,9 +124,9 @@ export const normalizePrcompanyResultCountResponse = (
   const root = toJsonRecord(rawJson) ?? {};
   const matchedRecord = findRecordByIdempotencyKey(rawJson, idempotencyKey);
   const countedRecord = findRecordWithCounts(rawJson);
-  const resultSource = matchedRecord ?? countedRecord ?? root;
+  const countSource = matchedRecord && hasResultCountFields(matchedRecord) ? matchedRecord : countedRecord ?? root;
 
-  const totalCount = readNumber(resultSource, [
+  const totalCount = readNumber(countSource, [
     "TCnt",
     "TotalCount",
     "TotalCnt",
@@ -135,7 +135,7 @@ export const normalizePrcompanyResultCountResponse = (
     "Cnt",
     "totalCount",
   ]);
-  const successCount = readNumber(resultSource, [
+  const successCount = readNumber(countSource, [
     "SCnt",
     "SuccessCount",
     "SuccessCnt",
@@ -143,12 +143,12 @@ export const normalizePrcompanyResultCountResponse = (
     "SuccCnt",
     "successCount",
   ]);
-  const failedCount = readNumber(resultSource, ["FCnt", "FailedCount", "FailCount", "FailCnt", "failedCount"]);
+  const failedCount = readNumber(countSource, ["FCnt", "FailedCount", "FailCount", "FailCnt", "failedCount"]);
   const providerResultCode =
-    readString(resultSource, ["ResCd", "ResultCode", "Code", "resCd", "resultCode"]) ??
+    readString(countSource, ["ResCd", "ResultCode", "Code", "resCd", "resultCode"]) ??
     readString(root, ["ResCd", "ResultCode", "Code", "resCd", "resultCode"]);
   const providerResultMessage =
-    readString(resultSource, ["ResMsg", "ResultMessage", "Message", "resMsg", "resultMessage"]) ??
+    readString(countSource, ["ResMsg", "ResultMessage", "Message", "resMsg", "resultMessage"]) ??
     readString(root, ["ResMsg", "ResultMessage", "Message", "resMsg", "resultMessage"]);
 
   const hasCount = totalCount !== null || successCount !== null || failedCount !== null;

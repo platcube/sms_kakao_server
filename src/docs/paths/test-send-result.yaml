@@ -277,3 +277,113 @@ paths:
           description: Message 없음 또는 운영 환경에서 테스트 API 접근
         "500":
           description: prcompany 연동 오류 또는 서버 오류
+
+  /api/v1/test/send-result/webhook:
+    post:
+      tags:
+        - Test
+      summary: Message 기준 외주사 전송결과 webhook 전송 테스트
+      description: |
+        개발 환경에서 특정 `Message`의 저장된 `DeliveryResult`를 외주사 전송현황 webhook API로 전달합니다.
+
+        이 API는 prcompany 결과를 새로 조회하지 않습니다.
+        먼저 `/api/v1/test/send-result/sync` 또는 스케줄러를 통해 `DeliveryResult`가 저장된 뒤 호출해야 합니다.
+
+        외주사 webhook으로 전달하는 request body는 아래 형식입니다.
+        - `idempotencyKey`
+        - `totalCount`
+        - `successCount`
+        - `failedCount`
+        - `message`
+
+        webhook URL은 아래 순서로 결정합니다.
+        - `Client.deliveryCallbackEnabled=true`이고 `Client.deliveryCallbackUrl`이 있으면 해당 URL 사용
+        - 없으면 테스트 환경변수 `KAKAO_SEND_STATUS_WEBHOOK_URL` 사용
+
+        호출 성공/실패 이력은 `ClientDeliveryCallbackAttempt`에 저장됩니다.
+        운영 환경(`NODE_ENV=production`)에서는 사용할 수 없습니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - messageId
+              properties:
+                messageId:
+                  type: integer
+                  description: 저장된 DeliveryResult를 외주사 webhook으로 전달할 Message ID
+                  example: 123
+            example:
+              messageId: 123
+      responses:
+        "200":
+          description: 외주사 webhook 전송 테스트 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                  - error
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - messageId
+                      - deliveryResultId
+                      - callbackAttemptId
+                      - success
+                      - responseStatus
+                      - responseBody
+                    properties:
+                      messageId:
+                        type: integer
+                        example: 123
+                      deliveryResultId:
+                        type: integer
+                        description: webhook payload 기준이 된 DeliveryResult ID
+                        example: 45
+                      callbackAttemptId:
+                        type: integer
+                        description: 저장된 ClientDeliveryCallbackAttempt ID
+                        example: 7
+                      success:
+                        type: boolean
+                        description: 외주사 webhook 응답이 2xx이면 true
+                        example: true
+                      responseStatus:
+                        type: integer
+                        nullable: true
+                        description: 외주사 webhook HTTP 응답 코드. 네트워크 오류면 null일 수 있습니다.
+                        example: 200
+                      responseBody:
+                        type: string
+                        nullable: true
+                        description: 외주사 webhook 응답 body 문자열
+                        example: OK
+                  error:
+                    nullable: true
+                    example: null
+              example:
+                success: true
+                data:
+                  messageId: 123
+                  deliveryResultId: 45
+                  callbackAttemptId: 7
+                  success: true
+                  responseStatus: 200
+                  responseBody: OK
+                error: null
+        "400":
+          description: 요청 검증 실패, 카카오 메시지가 아님, DeliveryResult 없음, webhook URL 미설정
+        "404":
+          description: Message 없음 또는 운영 환경에서 테스트 API 접근
+        "500":
+          description: 외주사 webhook 전송 이력 저장 오류 또는 서버 오류

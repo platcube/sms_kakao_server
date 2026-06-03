@@ -1,5 +1,6 @@
 import {
   TestPrcompanySendResultBodyDto,
+  TestSendResultWebhookBodyDto,
   TestSyncSendResultBodyDto,
 } from "@/api/v1/test/send-result/dto/test-send-result.dto";
 
@@ -53,6 +54,33 @@ export const parseTestPrcompanySendResultBody = (body: unknown): ValidationResul
 
 // DeliveryResult 저장 테스트 요청 body 검증
 export const parseTestSyncSendResultBody = (body: unknown): ValidationResult<TestSyncSendResultBodyDto> => {
+  const issues: { field: string; reason: string }[] = [];
+
+  if (!isRecord(body)) {
+    return { success: false, issues: [{ field: "body", reason: "body must be an object" }] };
+  }
+
+  const messageId = body.messageId;
+  const normalizedMessageId = typeof messageId === "string" ? Number(messageId) : messageId;
+
+  if (typeof normalizedMessageId !== "number" || !Number.isInteger(normalizedMessageId) || normalizedMessageId <= 0) {
+    issues.push({ field: "messageId", reason: "messageId must be a positive integer" });
+  }
+
+  if (issues.length > 0) {
+    return { success: false, issues };
+  }
+
+  return {
+    success: true,
+    data: {
+      messageId: normalizedMessageId as number,
+    },
+  };
+};
+
+// 저장된 DeliveryResult를 외주사 webhook으로 전달하는 테스트 요청 body 검증
+export const parseTestSendResultWebhookBody = (body: unknown): ValidationResult<TestSendResultWebhookBodyDto> => {
   const issues: { field: string; reason: string }[] = [];
 
   if (!isRecord(body)) {

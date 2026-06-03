@@ -1,5 +1,6 @@
 import { syncSendResultForMessage } from "@/libs/send-results";
 import { prisma } from "@/libs/prisma/client";
+import { sendKakaoSendStatusWebhook } from "@/libs/send-result-webhook";
 
 const MAX_SEND_RESULT_POLL_ATTEMPT = 4;
 const NEXT_SEND_RESULT_POLL_DELAY_MS = 10 * 60 * 1000;
@@ -9,6 +10,8 @@ const SEND_RESULT_POLLING_SCOPE = "send-result-polling";
 export type PollDueSendResultsResult = {
   due: number; // 조회 대상 메시지 수
   saved: number; // prcompany 결과 후 DeliveryResult 저장까지 완료한 메시지 수
+  webhookSent: number; // DeliveryResult 저장 후 외주사 webhook 전달까지 성공한 메시지 수
+  webhookFailed: number; // DeliveryResult 저장 후 외주사 webhook 전달에 실패한 메시지 수
   notFound: number; // prcompany 결과가 아직 없어 다음 조회로 예약한 메시지 수
   exhausted: number; // 최대 조회 횟수까지 결과가 없어 자동 조회를 종료한 메시지 수
   failed: number; // 조회/저장 처리 중 예외가 발생한 메시지 수
@@ -63,6 +66,8 @@ export const pollDueSendResults = async (): Promise<PollDueSendResultsResult> =>
   const result: PollDueSendResultsResult = {
     due: dueMessages.length,
     saved: 0,
+    webhookSent: 0,
+    webhookFailed: 0,
     notFound: 0,
     exhausted: 0,
     failed: 0,
@@ -75,6 +80,14 @@ export const pollDueSendResults = async (): Promise<PollDueSendResultsResult> =>
 
       if (syncResult.status === "SAVED") {
         result.saved += 1;
+
+        const webhookResult = await sendKakaoSendStatusWebhook(message.id);
+        if (webhookResult.success) {
+          result.webhookSent += 1;
+        } else {
+          result.webhookFailed += 1;
+        }
+
         continue;
       }
 
