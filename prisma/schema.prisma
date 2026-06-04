@@ -47,7 +47,7 @@ model Message {
   messageType           MessageType // 메시지 유형(SMS/LMS/MMS/ALIMTALK/BRANDTALK)
   sendType              SendType // 즉시/예약 발송 구분
   status                MessageStatus       @default(PENDING) // 현재 처리 상태
-  recipientPhone        String              @db.VarChar(1000) // 수신자 전화번호 목록(콤마 구분)
+  recipientPhone        String              @db.Text // 수신자 전화번호 목록(콤마 구분)
   senderKey             String              @db.VarChar(80) // 발신 번호 또는 발신프로필 키
   subject               String?             @db.VarChar(120) // 제목(LMS/MMS용)
   content               String              @db.Text // 메시지 본문
