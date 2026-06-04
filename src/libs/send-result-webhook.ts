@@ -5,7 +5,7 @@ import { AppError } from "@/libs/error/app-error";
 import { ERROR_CODES } from "@/libs/error/error-codes";
 import { prisma } from "@/libs/prisma/client";
 
-const WEBHOOK_TIMEOUT_MS = 10_000;
+const WEBHOOK_TIMEOUT_MS = 60_000;
 const WEBHOOK_RETRY_DELAY_MS = 5 * 60 * 1000;
 
 export type SendStatusWebhookResult = {
