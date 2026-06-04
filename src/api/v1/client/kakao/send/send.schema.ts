@@ -41,7 +41,7 @@ export const parseKakaoSendBody = (input: unknown): ValidationResult<SendKakaoBo
   if (!Array.isArray(normalizedPhones) || normalizedPhones.length === 0) {
     issues.push({ field: "recipientPhone", reason: "recipientPhone must be a non-empty array" });
   } else {
-    if (normalizedPhones.length > MAX_RECIPIENT_COUNT) {
+    // if (normalizedPhones.length > MAX_RECIPIENT_COUNT) {
     //   issues.push({ field: "recipientPhone", reason: `max ${MAX_RECIPIENT_COUNT} recipients are allowed` });
     // }
 
