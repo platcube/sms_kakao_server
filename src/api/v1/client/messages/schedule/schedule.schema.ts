@@ -5,7 +5,7 @@ const isNonEmptyString = (v: unknown): v is string => typeof v === "string" && v
 const isOptionalString = (v: unknown): v is string | undefined => v === undefined || typeof v === "string";
 const PHONE_REGEX = /^[0-9]{9,20}$/;
 const RESERVED_TIME_REGEX = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
-const MAX_RECIPIENT_COUNT = 100;
+// const MAX_RECIPIENT_COUNT = 100;
 
 const isSupportedMessageType = (v: unknown): v is ScheduleMessageBodyDto["messageType"] => v === "SMS" || v === "LMS";
 
@@ -42,14 +42,15 @@ export const parseScheduleMessageBody = (input: unknown): ValidationResult<Sched
 
   if (!isNonEmptyString(clientCode)) issues.push({ field: "clientCode", reason: "clientCode is required" });
   if (!isNonEmptyString(apiKey)) issues.push({ field: "apiKey", reason: "apiKey is required" });
-  if (!isSupportedMessageType(messageType)) issues.push({ field: "messageType", reason: "messageType must be 'SMS' or 'LMS'" });
+  if (!isSupportedMessageType(messageType))
+    issues.push({ field: "messageType", reason: "messageType must be 'SMS' or 'LMS'" });
 
   if (!Array.isArray(normalizedPhones) || normalizedPhones.length === 0) {
     issues.push({ field: "recipientPhone", reason: "recipientPhone must be a non-empty array" });
   } else {
-    if (normalizedPhones.length > MAX_RECIPIENT_COUNT) {
-      issues.push({ field: "recipientPhone", reason: `max ${MAX_RECIPIENT_COUNT} recipients are allowed` });
-    }
+    // if (normalizedPhones.length > MAX_RECIPIENT_COUNT) {
+    //   issues.push({ field: "recipientPhone", reason: `max ${MAX_RECIPIENT_COUNT} recipients are allowed` });
+    // }
 
     normalizedPhones.forEach((phone, index) => {
       if (!isNonEmptyString(phone) || !PHONE_REGEX.test(phone)) {
@@ -64,7 +65,8 @@ export const parseScheduleMessageBody = (input: unknown): ValidationResult<Sched
     issues.push({ field: "scheduledAt", reason: "scheduledAt (or reservedTime) is required" });
   }
   if (!isOptionalString(title)) issues.push({ field: "title", reason: "title must be string" });
-  if (!isOptionalString(idempotencyKey)) issues.push({ field: "idempotencyKey", reason: "idempotencyKey must be string" });
+  if (!isOptionalString(idempotencyKey))
+    issues.push({ field: "idempotencyKey", reason: "idempotencyKey must be string" });
   if (!isOptionalString(etc1)) issues.push({ field: "etc1", reason: "etc1 must be string" });
   if (!isOptionalString(etc2)) issues.push({ field: "etc2", reason: "etc2 must be string" });
 

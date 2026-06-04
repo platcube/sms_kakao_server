@@ -4,7 +4,7 @@ import { SendMessageBodyDto } from "@/api/v1/client/messages/send/dto/send-messa
 const isNonEmptyString = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
 const isOptionalString = (v: unknown): v is string | undefined => v === undefined || typeof v === "string";
 const PHONE_REGEX = /^[0-9]{9,20}$/;
-const MAX_RECIPIENT_COUNT = 100;
+// const MAX_RECIPIENT_COUNT = 100;
 const MESSAGE_TYPES = new Set<SendMessageBodyDto["messageType"]>(["SMS", "LMS"]);
 
 // SMS 즉시 발송 요청 body 검증
@@ -37,9 +37,9 @@ export const parseSendMessageBody = (input: unknown): ValidationResult<SendMessa
   if (!Array.isArray(normalizedPhones) || normalizedPhones.length === 0) {
     issues.push({ field: "recipientPhone", reason: "recipientPhone or phones must be a non-empty array" });
   } else {
-    if (normalizedPhones.length > MAX_RECIPIENT_COUNT) {
-      issues.push({ field: "recipientPhone", reason: `max ${MAX_RECIPIENT_COUNT} recipients are allowed` });
-    }
+    // if (normalizedPhones.length > MAX_RECIPIENT_COUNT) {
+    //   issues.push({ field: "recipientPhone", reason: `max ${MAX_RECIPIENT_COUNT} recipients are allowed` });
+    // }
 
     normalizedPhones.forEach((phone, index) => {
       if (!isNonEmptyString(phone) || !PHONE_REGEX.test(phone)) {
