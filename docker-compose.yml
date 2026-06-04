@@ -28,10 +28,11 @@ services:
     container_name: sms_kakao_scheduler
     restart: unless-stopped
     env_file:
-      - .env
+      - .env    
     environment:
       NODE_ENV: production
       TS_NODE_BASEURL: ./dist
+      PORT: 5101
     command: ["node", "-r", "tsconfig-paths/register", "-r", "dotenv/config", "dist/scheduler.js"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
