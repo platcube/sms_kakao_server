@@ -27,7 +27,7 @@ export const getPrcompanyAuthToken = () => {
 
 // prcompany API 공통 axios 인스턴스
 export const prcompanyClient = axios.create({
-  timeout: 10000,
+  timeout: 180000, // prcompany 발송 요청 제한시간 3분
   headers: {
     "Content-Type": "application/json",
   },
