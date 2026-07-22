@@ -24,6 +24,8 @@ const isOptionalNullableString = (value: unknown): value is string | null | unde
 const isJsonObjectOrNull = (value: unknown): value is Record<string, unknown> | null | undefined =>
   value === undefined || value === null || isRecord(value);
 
+const normalizeTemplateContent = (value: string) => value.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n");
+
 const parseProfile = (input: unknown, issues: { field: string; reason: string }[]): RegisterKakaoTemplateProfileDto => {
   const source = isRecord(input) ? input : {};
   const profileKey = source.profileKey;
@@ -109,7 +111,7 @@ const parseTemplate = (
   return {
     templateCode: isNonEmptyString(templateCode) ? templateCode.trim() : "",
     name: isNonEmptyString(name) ? name.trim() : "",
-    content: isNonEmptyString(content) ? content : "",
+    content: isNonEmptyString(content) ? normalizeTemplateContent(content) : "",
     ...(button1Json !== undefined ? { button1Json: button1Json as RegisterKakaoTemplateItemDto["button1Json"] } : {}),
     ...(button2Json !== undefined ? { button2Json: button2Json as RegisterKakaoTemplateItemDto["button2Json"] } : {}),
     ...(isNonEmptyString(category) ? { category: category.trim() } : {}),

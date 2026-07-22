@@ -64,17 +64,15 @@ paths:
                       templateCode:
                         type: string
                         description: 알림톡 템플릿 코드
-                        example: SH-002
+                        example: ROCK-RUN-DRAW-LOSE
                       name:
                         type: string
                         description: 내부 관리용 템플릿 이름
-                        example: 결제 완료 안내
+                        example: 추첨 미선정 안내
                       content:
                         type: string
-                        description: 승인된 알림톡 템플릿 본문
-                        example: |
-                          #{고객명}님의 결제가 완료되었습니다.
-                          주문번호: #{주문번호}
+                        description: 승인된 알림톡 템플릿 본문. JSON 문자열의 `\n` 또는 `\r\n`은 실제 개행 문자로 저장됩니다.
+                        example: "[락앤런 트레일러닝]\n#{대회명} 추첨 결과 안내\n\n안녕하세요. #{이름}님,\n이번 #{대회명} 추첨에 아쉽게도 선정되지 않았습니다.\n\n많은 관심과 신청에 진심으로 감사드립니다.\n\n당첨자가 기한 내 결제를 완료하지 않을 경우 추가 모집이 진행될 수 있습니다.\n\n참가 기회가 다시 열릴 수 있으니 끝까지 많은 관심 부탁드립니다."
                       button1Json:
                         type: object
                         nullable: true
@@ -118,18 +116,16 @@ paths:
                 channelName: 플랫큐브
                 status: ACTIVE
               templates:
-                - templateCode: SH-002
-                  name: 결제 완료 안내
-                  content: |-
-                    #{고객명}님의 결제가 완료되었습니다.
-                    주문번호: #{주문번호}
+                - templateCode: ROCK-RUN-DRAW-LOSE
+                  name: 추첨 미선정 안내
+                  content: "[락앤런 트레일러닝]\n#{대회명} 추첨 결과 안내\n\n안녕하세요. #{이름}님,\n이번 #{대회명} 추첨에 아쉽게도 선정되지 않았습니다.\n\n많은 관심과 신청에 진심으로 감사드립니다.\n\n당첨자가 기한 내 결제를 완료하지 않을 경우 추가 모집이 진행될 수 있습니다.\n\n참가 기회가 다시 열릴 수 있으니 끝까지 많은 관심 부탁드립니다."
                   button1Json:
                     name: 주문내역 확인
                     type: WL
                     url_mobile: https://example.com/orders
                     url_pc: https://example.com/orders
                   button2Json: null
-                  category: ORDER
+                  category: CONTEST
                   status: APPROVED
       responses:
         "201":

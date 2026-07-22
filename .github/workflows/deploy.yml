@@ -1,0 +1,58 @@
+name: Deploy message-server
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and push image
+        env:
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/sms_kakao_server
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t "${IMAGE_NAME}:${IMAGE_TAG}" .
+          docker push "${IMAGE_NAME}:${IMAGE_TAG}"
+
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+
+            cd /home/platcube/dev1/platcube/message_pr/sms_kakao_server
+            git pull --ff-only origin main
+
+            export IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/sms_kakao_server
+            export IMAGE_TAG=${{ github.sha }}
+
+            docker compose pull message-server message-scheduler
+            docker compose run --rm message-server npm run prisma:deploy
+            docker compose up -d --no-build message-server message-scheduler
+            docker compose ps

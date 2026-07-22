@@ -1,9 +1,10 @@
 services:
-  app:
+  message-server:
+    image: ${IMAGE_NAME:-ghcr.io/platcube/sms_kakao_server}:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sms_kakao_server
+    container_name: message-server
     restart: unless-stopped
     env_file:
       - .env
@@ -21,11 +22,12 @@ services:
       retries: 5
       start_period: 20s
 
-  scheduler:
+  message-scheduler:
+    image: ${IMAGE_NAME:-ghcr.io/platcube/sms_kakao_server}:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sms_kakao_scheduler
+    container_name: message-scheduler
     restart: unless-stopped
     env_file:
       - .env    
