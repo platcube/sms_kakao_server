@@ -2,7 +2,7 @@
 
 set -Eeuo pipefail
 
-DEPLOY_ROOT="${DEPLOY_ROOT:-/home/platcube/dev1/platcube/message_pr}"
+DEPLOY_ROOT="${DEPLOY_ROOT:-/home/platcube/dev/platcube/message_pr}"
 APP_NAME="${APP_NAME:-sms_kakao_server}"
 APP_DIR="${APP_DIR:-$DEPLOY_ROOT/$APP_NAME}"
 COMPOSE_FILE="${COMPOSE_FILE:-$DEPLOY_ROOT/docker-compose.yml}"
