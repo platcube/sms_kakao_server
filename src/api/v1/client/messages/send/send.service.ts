@@ -80,6 +80,10 @@ export const sendSmsMessage = async (input: SendMessageBodyDto): Promise<SendMes
     throw new AppError(404, ERROR_CODES.COMMON_404_NOT_FOUND, "Client not found");
   }
 
+  if (input.senderKey !== client.senderPhone) {
+    throw new AppError(400, ERROR_CODES.COMMON_400_VALIDATION, "클라이언트에 등록된 발신번호가 아닙니다.");
+  }
+
   // 2) idempotencyKey가 있으면 동일 요청 재처리 대신 기존 메시지 반환
   if (input.idempotencyKey) {
     const existingMessage = await prisma.message.findFirst({
