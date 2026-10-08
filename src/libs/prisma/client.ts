@@ -8,7 +8,10 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is required");
 }
 
-const adapter = new PrismaMariaDb(connectionString);
+const databaseUrl = new URL(connectionString);
+databaseUrl.searchParams.set("timezone", "Z");
+
+const adapter = new PrismaMariaDb(databaseUrl.toString());
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
